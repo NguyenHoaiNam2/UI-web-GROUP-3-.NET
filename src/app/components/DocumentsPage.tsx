@@ -39,7 +39,7 @@ export const DocumentsPage: React.FC = () => {
   );
 
   return (
-    <div className="flex-1 bg-gray-50 min-h-screen py-12 px-4 sm:px-6 lg:px-8">
+    <div className="w-full h-full bg-gradient-to-b from-white via-blue-50/30 to-white animate-fade-in overflow-auto py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-5xl mx-auto">
         {/* Header Section */}
         <div className="text-center mb-12">

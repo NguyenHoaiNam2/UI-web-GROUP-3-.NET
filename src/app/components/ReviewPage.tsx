@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Shield, Wrench, AlertTriangle, Map as MapIcon, Zap, Gavel, ArrowLeft, AlertCircle, CheckCircle, XCircle, Truck } from 'lucide-react';
 import { Question } from '@/app/types';
-import { ReviewGame } from '@/app/components/ReviewGame';
+import { QuizGame } from '@/app/components/QuizGame';
 
 // Dữ liệu cho các chương ôn tập
 const REVIEW_CHAPTERS = [
@@ -155,10 +155,13 @@ export const ReviewPage: React.FC<ReviewPageProps> = ({ questions }) => {
   if (selectedChapter || showParalysisOnly) {
     const title = showParalysisOnly ? 'Các câu điểm liệt' : selectedChapter?.title || 'Ôn tập';
     return (
-      <ReviewGame
+      <QuizGame
         examTitle={title}
         questions={filteredQuestions}
         onExit={() => { setSelectedChapter(null); setShowParalysisOnly(false); }}
+        showTimer={false}
+        submitButtonText="Hoàn thành"
+        showImmediateExplanation={true}
       />
     );
   }

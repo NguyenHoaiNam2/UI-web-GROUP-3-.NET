@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Home, FileText, Facebook, Twitter, Instagram, Mail, LogIn, User as UserIcon, LogOut, CheckSquare, Book, Shield } from 'lucide-react';
+import { Home, FileText, Facebook, Twitter, Instagram, Mail, LogIn, User as UserIcon, LogOut, CheckSquare, Book, Shield, Info } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import logoImage from '@/assets/logo.svg';
 import userAvatar from '@/assets/avatar.svg';
+import pageBackground from '@/assets/background-main.png';
 import { AuthPage } from '@/app/components/AuthPage';
 import { AdminLogin } from '@/app/components/AdminLogin';
 import { ProfilePage } from '@/app/components/ProfilePage';
@@ -10,6 +11,7 @@ import { HistoryPage } from '@/app/components/HistoryPage';
 import { ThiPage } from '@/app/components/ThiPage';
 import { ReviewPage } from '@/app/components/ReviewPage';
 import { HomePage } from '@/app/components/HomePage';
+import { IntroPage } from '@/app/components/IntroPage';
 import { PrivacyPolicyPage } from '@/app/components/PrivacyPolicyPage';
 import { ContactPage } from '@/app/components/ContactPage';
 import { AdminPage } from '@/app/components/AdminPage';
@@ -18,10 +20,11 @@ import { Question } from '@/app/types';
 import { Chapter, CHAPTERS } from '@/app/types'; // Ensure Chapter and CHAPTERS are imported
 
 // Định nghĩa các trang chính
-type PageKey = 'HOME' | 'THI' | 'REVIEW' | 'DOCS' | 'PROFILE' | 'HISTORY' | 'PRIVACY' | 'CONTACT' | 'ADMIN';
+type PageKey = 'HOME' | 'INTRO' | 'THI' | 'REVIEW' | 'DOCS' | 'PROFILE' | 'HISTORY' | 'PRIVACY' | 'CONTACT' | 'ADMIN';
 
 const PAGES: Record<PageKey, string> = {
   HOME: 'Trang Chủ',
+  INTRO: 'Giới thiệu',
   THI: 'Thi Sát Hạch',
   REVIEW: 'Ôn Tập',
   DOCS: 'Tài liệu',
@@ -45,10 +48,11 @@ const App = () => {
     try {
       if (typeof window !== 'undefined') {
         const saved = window.localStorage.getItem('currentPage') as PageKey | null;
-        const validKeys: PageKey[] = ['HOME','THI','REVIEW','DOCS','PROFILE','HISTORY','PRIVACY','CONTACT','ADMIN'];
+        const validKeys: PageKey[] = ['HOME','INTRO','THI','REVIEW','DOCS','PROFILE','HISTORY','PRIVACY','CONTACT','ADMIN'];
         if (saved && validKeys.includes(saved)) return saved;
         const path = window.location.pathname || '/';
         if (path === '/admin') return 'ADMIN';
+        if (path.startsWith('/intro') || path.startsWith('/gioi-thieu')) return 'INTRO';
         if (path.startsWith('/docs')) return 'DOCS';
         if (path.startsWith('/thi')) return 'THI';
         if (path.startsWith('/review')) return 'REVIEW';
@@ -271,7 +275,7 @@ const App = () => {
     try {
       if (typeof window !== 'undefined') {
         const pathMap: Record<PageKey, string> = {
-          HOME: '/', THI: '/thi', REVIEW: '/review', DOCS: '/docs', PROFILE: '/profile', HISTORY: '/history', PRIVACY: '/privacy', CONTACT: '/contact', ADMIN: '/admin'
+          HOME: '/', INTRO: '/intro', THI: '/thi', REVIEW: '/review', DOCS: '/docs', PROFILE: '/profile', HISTORY: '/history', PRIVACY: '/privacy', CONTACT: '/contact', ADMIN: '/admin'
         };
         const newPath = pathMap[page] || '/';
         window.history.replaceState(null, '', newPath);
@@ -354,6 +358,13 @@ const App = () => {
             chapters={chapters}
           />
         );
+      case 'INTRO':
+        return (
+          <IntroPage
+            onNavigateToThi={() => handlePageChange('THI')}
+            onNavigateToDocs={() => handlePageChange('DOCS')}
+          />
+        );
       case 'REVIEW':
         return <ReviewPage questions={questions} />;
       case 'PROFILE':
@@ -408,7 +419,17 @@ const App = () => {
   };
 
   return (
-    <div className="min-h-screen w-full flex flex-col bg-white font-sans text-gray-800 overflow-x-hidden">
+    <div
+      className="min-h-screen w-full flex flex-col font-sans text-gray-800 overflow-x-hidden"
+      style={{
+        backgroundImage: `url(${pageBackground})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center center',
+        backgroundRepeat: 'no-repeat',
+        backgroundAttachment: 'fixed',
+        backgroundColor: '#060066',
+      }}
+    >
       {/* Navbar */}
       <nav className="w-full bg-blue-50 px-8 py-4 shadow-sm flex items-center justify-between sticky top-0 z-50 backdrop-blur-md bg-opacity-90">
         <div 
@@ -432,6 +453,12 @@ const App = () => {
               onClick={() => handlePageChange('HOME')}
               icon={<Home size={20} />}
               label={PAGES.HOME}
+            />
+            <NavButton 
+              active={currentPage === 'INTRO'} 
+              onClick={() => handlePageChange('INTRO')}
+              icon={<Info size={20} />}
+              label={PAGES.INTRO}
             />
              <NavButton 
               active={currentPage === 'THI'} 

@@ -61,9 +61,6 @@ interface ThiPageProps {
 }
 
 export const ThiPage: React.FC<ThiPageProps> = ({ isAuthenticated, onShowAuth, onNavigateHistory, questions: allQuestions, chapters: propChapters, retakeQuestions, retakeExamTitle, onConsumeRetake }) => {
-  // State: null = trang chủ thi, object = đang chọn bằng lái cụ thể
-  const [selectedLicense, setSelectedLicense] = useState<typeof LICENSE_TYPES[0] | null>(null);
-  
   // State: null = chưa chọn đề, object = đang làm bài thi (hoặc xem chi tiết đề)
   const [selectedExam, setSelectedExam] = useState<{title: string, topic: string} | null>(null);
   
@@ -92,16 +89,135 @@ export const ThiPage: React.FC<ThiPageProps> = ({ isAuthenticated, onShowAuth, o
     setSelectedExam(exam);
   };
 
+  // Helper: Create and start exam for a specific license
+  const handleStartExamByLicense = (license: typeof LICENSE_TYPES[0]) => {
+    // Helper: Fisher-Yates shuffle
+    const shuffle = <T,>(arr: T[]) => {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    };
+
+    if (license.code === 'B1') {
+      const desired: Record<number, number> = {
+        1: 9,
+        3: 1,
+        4: 1,
+        5: 1,
+        6: 9,
+        7: 9,
+      };
+
+      const selected: Question[] = [];
+      const usedIds = new Set<string>();
+      let needParalysis = true;
+
+      for (const chapStr of Object.keys(desired)) {
+        const chap = Number(chapStr);
+        const want = desired[chap];
+        const pool = shuffle(allQuestions.filter(q => q.chapterId === chap && !usedIds.has(q.id)));
+
+        if (needParalysis) {
+          const paralysisIdx = pool.findIndex(q => q.isParalysis);
+          if (paralysisIdx !== -1) {
+            const pq = pool.splice(paralysisIdx, 1)[0];
+            selected.push(pq);
+            usedIds.add(pq.id);
+            needParalysis = false;
+          }
+        }
+
+        for (let i = 0; i < want && pool.length > 0; i++) {
+          const q = pool.shift()!;
+          if (!usedIds.has(q.id)) {
+            selected.push(q);
+            usedIds.add(q.id);
+          } else {
+            i--;
+          }
+        }
+      }
+
+      if (needParalysis) {
+        const globalPar = allQuestions.find(q => q.isParalysis && !usedIds.has(q.id));
+        if (globalPar) {
+          const replaceIdx = selected.findIndex(q => !q.isParalysis);
+          if (replaceIdx !== -1) {
+            usedIds.delete(selected[replaceIdx].id);
+            selected[replaceIdx] = globalPar;
+            usedIds.add(globalPar.id);
+            needParalysis = false;
+          } else {
+            selected.push(globalPar);
+            usedIds.add(globalPar.id);
+            needParalysis = false;
+          }
+        }
+      }
+
+      const shortages: number[] = [];
+      for (const chapStr of Object.keys(desired)) {
+        const chap = Number(chapStr);
+        const got = selected.filter(q => q.chapterId === chap).length;
+        if (got < desired[chap]) shortages.push(chap);
+      }
+
+      if (shortages.length > 0) {
+        const chapNames = shortages.map(c => `Chương ${c}`).join(', ');
+        toast.warning(`Không đủ câu cho: ${chapNames}. Đề sẽ có ${selected.length} câu.`);
+      }
+
+      let finalSelected = selected.slice(0, 30);
+
+      const paralysisCount = finalSelected.filter(q => q.isParalysis).length;
+      if (paralysisCount === 0) {
+        const globalPar2 = allQuestions.find(q => q.isParalysis && !finalSelected.some(f => f.id === q.id));
+        if (globalPar2) {
+          const replaceIdx = finalSelected.findIndex(q => !q.isParalysis);
+          if (replaceIdx !== -1) finalSelected[replaceIdx] = globalPar2;
+        }
+      } else if (paralysisCount > 1) {
+        let keepOne = false;
+        for (let i = finalSelected.length - 1; i >= 0; i--) {
+          if (finalSelected[i].isParalysis) {
+            if (!keepOne) {
+              keepOne = true;
+              continue;
+            }
+            const replacement = allQuestions.find(q => !q.isParalysis && !finalSelected.some(f => f.id === q.id));
+            if (replacement) finalSelected[i] = replacement;
+          }
+        }
+      }
+
+      finalSelected = shuffle(finalSelected);
+
+      setExamQuestions(finalSelected);
+      setExamConfig({ timeSeconds: 20 * 60, passCount: 27, paralysisMandatory: true });
+      setSelectedExam({ 
+        title: `${license.code} - Thi Sát Hạch`, 
+        topic: `Thời gian: 20 phút - 30 câu hỏi` 
+      });
+    } else {
+      const shuffled = [...allQuestions].sort(() => 0.5 - Math.random());
+      setExamQuestions(shuffled.slice(0, 35));
+      setExamConfig(null);
+      setSelectedExam({ 
+        title: `${license.code} - Thi Sát Hạch`, 
+        topic: `Thời gian: 22 phút - 35 câu hỏi` 
+      });
+    }
+  };
+
   const getLicenseIcon = (code: string) => {
     if (code.startsWith('A')) return <Bike size={32} />;
     if (code.startsWith('B')) return <Car size={32} />;
     if (code.startsWith('C') || code.startsWith('F')) return <Truck size={32} />;
     return <Truck size={32} />; // D, E dùng chung icon xe lớn
   };
-
-  // Admin / debug: show all questions fetched from API/localStorage
-  const [showAllQuestions, setShowAllQuestions] = useState(false);
-  const chapters = propChapters && propChapters.length ? propChapters : [];
 
   // 1. Màn hình chi tiết bài thi (Placeholder)
   if (selectedExam) {
@@ -128,175 +244,7 @@ export const ThiPage: React.FC<ThiPageProps> = ({ isAuthenticated, onShowAuth, o
     );
   }
 
-  // 2. Màn hình danh sách đề thi của một bằng lái cụ thể
-  if (selectedLicense) {
-    return (
-      <div className="w-full h-full p-8 bg-gradient-to-b from-blue-50 via-white to-blue-50 animate-fade-in overflow-auto">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12">
-            <div className="inline-flex items-center justify-center p-4 bg-white rounded-full shadow-md mb-4">
-              <div className={selectedLicense.color}>
-                {getLicenseIcon(selectedLicense.code)}
-              </div>
-            </div>
-            <h2 className="text-4xl font-bold text-gray-900 mb-3">
-              Bộ Đề Thi {selectedLicense.name}
-            </h2>
-            <p className="text-gray-600 text-lg max-w-2xl mx-auto mb-8">{selectedLicense.description}</p>
-            
-            <button 
-              onClick={() => {
-                // Helper: Fisher-Yates shuffle
-                const shuffle = <T,>(arr: T[]) => {
-                  const a = [...arr];
-                  for (let i = a.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [a[i], a[j]] = [a[j], a[i]];
-                  }
-                  return a;
-                };
-
-                if (selectedLicense.code === 'B1') {
-                  // Desired per-chapter counts for B1
-                  const desired: Record<number, number> = {
-                    1: 9,
-                    3: 1,
-                    4: 1,
-                    5: 1,
-                    6: 9,
-                    7: 9,
-                  };
-
-                  const selected: Question[] = [];
-                  const usedIds = new Set<string>();
-
-                  // Try to include exactly one paralysis question from the chapters above if possible
-                  let needParalysis = true;
-
-                  // First pass: pick per-chapter, reserving one slot for paralysis when found
-                  for (const chapStr of Object.keys(desired)) {
-                    const chap = Number(chapStr);
-                    const want = desired[chap];
-                    const pool = shuffle(allQuestions.filter(q => q.chapterId === chap && !usedIds.has(q.id)));
-
-                    // If we still need a paralysis and this chapter has one, take it first (reserve one)
-                    if (needParalysis) {
-                      const paralysisIdx = pool.findIndex(q => q.isParalysis);
-                      if (paralysisIdx !== -1) {
-                        const pq = pool.splice(paralysisIdx, 1)[0];
-                        selected.push(pq);
-                        usedIds.add(pq.id);
-                        needParalysis = false;
-                      }
-                    }
-
-                    // Fill the rest for this chapter up to 'want'
-                    for (let i = 0; i < want && pool.length > 0; i++) {
-                      const q = pool.shift()!;
-                      if (!usedIds.has(q.id)) {
-                        selected.push(q);
-                        usedIds.add(q.id);
-                      } else {
-                        // continue to next if somehow duplicate
-                        i--;
-                      }
-                    }
-                  }
-
-                  // If we still need paralysis, try to find one anywhere (not already selected)
-                  if (needParalysis) {
-                    const globalPar = allQuestions.find(q => q.isParalysis && !usedIds.has(q.id));
-                    if (globalPar) {
-                      // replace a non-paralysis selected question with this one
-                      const replaceIdx = selected.findIndex(q => !q.isParalysis);
-                      if (replaceIdx !== -1) {
-                        usedIds.delete(selected[replaceIdx].id);
-                        selected[replaceIdx] = globalPar;
-                        usedIds.add(globalPar.id);
-                        needParalysis = false;
-                      } else {
-                        // no non-paralysis to replace (very unlikely) -> just push and later trim
-                        selected.push(globalPar);
-                        usedIds.add(globalPar.id);
-                        needParalysis = false;
-                      }
-                    }
-                  }
-
-                  // If some chapters didn't have enough questions, DO NOT auto-fill from unrelated chapters.
-                  // Instead keep the actual per-chapter selection (may be <30) and notify the user.
-                  const shortages: number[] = [];
-                  for (const chapStr of Object.keys(desired)) {
-                    const chap = Number(chapStr);
-                    const got = selected.filter(q => q.chapterId === chap).length;
-                    if (got < desired[chap]) shortages.push(chap);
-                  }
-
-                  if (shortages.length > 0) {
-                    // Notify which chapters were short and that the exam will have fewer questions
-                    const chapNames = shortages.map(c => `Chương ${c}`).join(', ');
-                    toast.warning(`Không đủ câu cho: ${chapNames}. Đề sẽ có ${selected.length} câu.`);
-                  }
-
-                  // If we have more than 30 (possible if we pushed a global paralysis), trim to 30
-                  let finalSelected = selected.slice(0, 30);
-
-                  // As a last safety, ensure exactly one paralysis question included (if possible)
-                  const paralysisCount = finalSelected.filter(q => q.isParalysis).length;
-                  if (paralysisCount === 0) {
-                    // try to swap in one
-                    const globalPar2 = allQuestions.find(q => q.isParalysis && !finalSelected.some(f => f.id === q.id));
-                    if (globalPar2) {
-                      // replace last non-paralysis
-                      const replaceIdx = finalSelected.findIndex(q => !q.isParalysis);
-                      if (replaceIdx !== -1) finalSelected[replaceIdx] = globalPar2;
-                    }
-                  } else if (paralysisCount > 1) {
-                    // reduce to 1 by replacing extras with non-paralysis leftovers
-                    let keepOne = false;
-                    for (let i = finalSelected.length - 1; i >= 0; i--) {
-                      if (finalSelected[i].isParalysis) {
-                        if (!keepOne) {
-                          keepOne = true;
-                          continue;
-                        }
-                        // find a replacement non-paralysis
-                        const replacement = allQuestions.find(q => !q.isParalysis && !finalSelected.some(f => f.id === q.id));
-                        if (replacement) finalSelected[i] = replacement;
-                      }
-                    }
-                  }
-
-                  // Final shuffle within the selected set so order is random
-                  finalSelected = shuffle(finalSelected);
-
-                  setExamQuestions(finalSelected);
-                  setExamConfig({ timeSeconds: 20 * 60, passCount: 27, paralysisMandatory: true });
-                  setSelectedExam({ 
-                    title: `${selectedLicense.code} - Thi Sát Hạch`, 
-                    topic: `Thời gian: 20 phút - 30 câu hỏi` 
-                  });
-                } else {
-                  const shuffled = [...allQuestions].sort(() => 0.5 - Math.random());
-                  setExamQuestions(shuffled.slice(0, 35));
-                  setExamConfig(null);
-                  setSelectedExam({ 
-                    title: `${selectedLicense.code} - Thi Sát Hạch`, 
-                    topic: `Thời gian: 22 phút - 35 câu hỏi` 
-                  });
-                }
-              }}
-              className="px-12 py-4 bg-blue-600 text-white text-xl font-bold rounded-xl hover:bg-blue-700 transition-all shadow-lg hover:shadow-xl"
-            >
-              Làm bài
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // 3. Màn hình chính (Trang chủ Thi Sát Hạch)
+  // 2. Màn hình chính (Trang chủ Thi Sát Hạch)
   return (
     <div className="w-full h-full bg-gradient-to-b from-white via-blue-50/30 to-white animate-fade-in overflow-auto">
       <div className="max-w-7xl mx-auto px-6 py-10">
@@ -314,7 +262,7 @@ export const ThiPage: React.FC<ThiPageProps> = ({ isAuthenticated, onShowAuth, o
             {LICENSE_TYPES.map((license) => (
               <button 
                 key={license.code}
-                onClick={() => setSelectedLicense(license)}
+                onClick={() => handleStartExamByLicense(license)}
                 className={`
                   bg-white p-6 rounded-xl border-2 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg text-left group
                   ${license.border} hover:border-current
@@ -426,45 +374,6 @@ export const ThiPage: React.FC<ThiPageProps> = ({ isAuthenticated, onShowAuth, o
           <button className="px-6 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg font-medium transition-colors shadow-sm">
             Xem quy định thi
           </button>
-        </div>
-
-        {/* Danh sách tất cả câu hỏi (từ API / localStorage) */}
-        <div className="mt-10">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-2xl font-bold text-gray-900">Danh sách câu hỏi (từ API)</h3>
-            <button
-              onClick={() => setShowAllQuestions(prev => !prev)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
-            >
-              {showAllQuestions ? 'Ẩn' : 'Hiện tất cả câu hỏi'}
-            </button>
-          </div>
-
-          {showAllQuestions && (
-            allQuestions.length === 0 ? (
-              <div className="p-6 bg-white rounded-2xl border border-gray-100 text-center text-gray-500">Chưa có câu hỏi trong hệ thống</div>
-            ) : (
-              <div className="grid grid-cols-1 gap-4">
-                {allQuestions.map((q) => (
-                  <div key={q.id} className={`bg-white p-4 rounded-2xl border ${q.isParalysis ? 'border-red-100' : 'border-gray-100'}`}>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="text-sm text-gray-500">ID: {q.id}</div>
-                      <div className="text-sm text-gray-500">Chương: {chapters.find(c => c.id === q.chapterId)?.title ?? `Chương ${q.chapterId}`}</div>
-                    </div>
-                    <h4 className="font-semibold text-gray-900 mb-3">{q.content}</h4>
-                    <ul className="space-y-2">
-                      {q.options.map((opt, idx) => (
-                        <li key={idx} className={`p-2 rounded ${idx === q.correctAnswer ? 'bg-green-50 border border-green-100 text-green-800' : 'bg-gray-50 border border-gray-100'}`}>
-                          <div className="text-sm">{String.fromCharCode(65 + idx)}. {opt}</div>
-                        </li>
-                      ))}
-                    </ul>
-                    {q.explanation && <p className="mt-3 text-sm text-gray-500">Giải thích: {q.explanation}</p>}
-                  </div>
-                ))}
-              </div>
-            )
-          )}
         </div>
 
       </div>

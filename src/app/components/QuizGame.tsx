@@ -16,20 +16,21 @@ interface QuizGameProps {
     passCount?: number; // minimum correct to pass
     paralysisMandatory?: boolean; // if true, any mistake on isParalysis causes fail
   };
+  showTimer?: boolean;
+  submitButtonText?: string;
+  showImmediateExplanation?: boolean;
 }
 
-export const QuizGame: React.FC<QuizGameProps> = ({ examTitle, questions, onExit, initialSelectedAnswers, startShowResult, readonly, examConfig }) => {
+export const QuizGame: React.FC<QuizGameProps> = ({ examTitle, questions, onExit, initialSelectedAnswers, startShowResult, readonly, examConfig, showTimer = true, submitButtonText = 'Nộp bài', showImmediateExplanation = false }) => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number>>(() => initialSelectedAnswers || {});
   const [isSubmitted, setIsSubmitted] = useState(false);
   const defaultTime = (examConfig?.timeSeconds) ?? (22 * 60);
   const [timeLeft, setTimeLeft] = useState(defaultTime);
   const [showResult, setShowResult] = useState(!!startShowResult);
-  // displayQuestions = questions with shuffled options for this exam instance
-  const [displayQuestions, setDisplayQuestions] = useState<Question[]>([]);
 
   // If no questions are provided, show loading state
-  if ((!questions || questions.length === 0) && displayQuestions.length === 0) {
+  if (!questions || questions.length === 0) {
     return (
       <div className="w-full h-96 flex flex-col items-center justify-center bg-white rounded-2xl shadow-xl p-8">
         <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-4" />
@@ -45,29 +46,14 @@ export const QuizGame: React.FC<QuizGameProps> = ({ examTitle, questions, onExit
     );
   }
 
-  // Use shuffled displayQuestions if available
-  const usedQuestions = displayQuestions.length > 0 ? displayQuestions : questions;
+  const usedQuestions = questions;
   const currentQuestion = usedQuestions[currentQuestionIndex];
   const totalQuestions = usedQuestions.length;
 
-  // Helper: shuffle options per question and adjust correctAnswer index
-  const shuffleQuestionOptions = (q: Question) => {
-    const opts = q.options.map((o, i) => ({ content: o, originalIndex: i }));
-    for (let i = opts.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [opts[i], opts[j]] = [opts[j], opts[i]];
-    }
-    const shuffledOptions = opts.map(o => o.content);
-    const newCorrect = opts.findIndex(o => o.originalIndex === q.correctAnswer);
-    return { ...q, options: shuffledOptions, correctAnswer: newCorrect } as Question;
-  };
-
-  // Initialize displayQuestions when questions prop changes (new exam)
+  // Reset exam state when question set changes.
   useEffect(() => {
     if (!questions || questions.length === 0) return;
     if (showResult || readonly) return;
-    const dq = questions.map(q => shuffleQuestionOptions(q));
-    setDisplayQuestions(dq);
     if (!initialSelectedAnswers) setSelectedAnswers({});
     setCurrentQuestionIndex(0);
     setTimeLeft((examConfig?.timeSeconds) ?? (22 * 60));
@@ -75,7 +61,7 @@ export const QuizGame: React.FC<QuizGameProps> = ({ examTitle, questions, onExit
   }, [questions]);
 
   useEffect(() => {
-    if (showResult || readonly) return;
+    if (showResult || readonly || !showTimer) return;
 
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
@@ -89,7 +75,7 @@ export const QuizGame: React.FC<QuizGameProps> = ({ examTitle, questions, onExit
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [showResult, readonly]);
+  }, [showResult, readonly, showTimer]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -99,10 +85,10 @@ export const QuizGame: React.FC<QuizGameProps> = ({ examTitle, questions, onExit
 
   const handleSelectAnswer = (optionIndex: number) => {
     if (showResult || readonly) return;
-    setSelectedAnswers({
-      ...selectedAnswers,
+    setSelectedAnswers(prev => ({
+      ...prev,
       [currentQuestion.id]: optionIndex
-    });
+    }));
   };
 
   const handleNext = () => {
@@ -142,7 +128,7 @@ export const QuizGame: React.FC<QuizGameProps> = ({ examTitle, questions, onExit
         failedByCritical,
         timeTakenSeconds,
         incorrectQuestions,
-        questions: usedQuestions, // save the displayed (shuffled) questions so history preserves order
+        questions: usedQuestions,
         selectedAnswers,
       } as any;
 
@@ -202,8 +188,8 @@ export const QuizGame: React.FC<QuizGameProps> = ({ examTitle, questions, onExit
                         ))}
                       </div>
                       {!isCorrect && q.explanation && (
-                        <div className="mt-3 text-sm text-gray-600 italic bg-white/50 p-2 rounded">
-                          <span className="font-bold">Giải thích:</span> {q.explanation}
+                        <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-[20px] text-amber-900 leading-relaxed">
+                          <span className="font-bold text-amber-950">Giải thích:</span> {q.explanation}
                         </div>
                       )}
                     </div>
@@ -234,10 +220,12 @@ export const QuizGame: React.FC<QuizGameProps> = ({ examTitle, questions, onExit
           <h2 className="font-bold text-lg opacity-90">{examTitle}</h2>
           <div className="text-sm opacity-75">Câu hỏi {currentQuestionIndex + 1}/{totalQuestions}</div>
         </div>
-        <div className={`flex items-center gap-2 font-mono text-2xl font-bold px-4 py-1 rounded-lg ${timeLeft < 60 ? 'bg-red-500 animate-pulse' : 'bg-blue-500/50'}`}>
-          <Clock size={24} />
-          {formatTime(timeLeft)}
-        </div>
+        {showTimer && (
+          <div className={`flex items-center gap-2 font-mono text-2xl font-bold px-4 py-1 rounded-lg ${timeLeft < 60 ? 'bg-red-500 animate-pulse' : 'bg-blue-500/50'}`}>
+            <Clock size={24} />
+            {formatTime(timeLeft)}
+          </div>
+        )}
       </div>
 
       {/* Main Content Area */}
@@ -279,31 +267,94 @@ export const QuizGame: React.FC<QuizGameProps> = ({ examTitle, questions, onExit
                 <span className="text-lg font-medium">{option}</span>
               </button>
             ))}
+
+            {showImmediateExplanation && selectedAnswers[currentQuestion.id] !== undefined && (
+              <div
+                className={`mt-4 rounded-xl border-2 p-4 shadow-sm ${
+                  selectedAnswers[currentQuestion.id] === currentQuestion.correctAnswer
+                    ? 'border-green-300 bg-green-50'
+                    : 'border-red-300 bg-red-50'
+                }`}
+              >
+                <div className="mb-3 flex items-center gap-2">
+                  {selectedAnswers[currentQuestion.id] === currentQuestion.correctAnswer ? (
+                    <CheckCircle size={18} className="text-green-700" />
+                  ) : (
+                    <XCircle size={18} className="text-red-700" />
+                  )}
+                  {selectedAnswers[currentQuestion.id] === currentQuestion.correctAnswer ? (
+                    <span className="text-base font-bold text-green-800">Bạn trả lời đúng.</span>
+                  ) : (
+                    <span className="text-base font-bold text-red-800">Bạn trả lời sai.</span>
+                  )}
+                </div>
+
+                {currentQuestion.explanation ? (
+                  <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-[20px] leading-relaxed text-amber-900">
+                    <span className="font-bold text-amber-950">Giải thích:</span> {currentQuestion.explanation}
+                  </div>
+                ) : null}
+
+                <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
+                  <span className="font-semibold text-blue-950">Đáp án đúng:</span>{' '}
+                  <strong>{currentQuestion.options[currentQuestion.correctAnswer]}</strong>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-6 flex w-full items-center justify-between gap-4">
+            <button
+              onClick={handlePrev}
+              disabled={currentQuestionIndex === 0}
+              className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold border transition-all ${currentQuestionIndex === 0 ? 'cursor-not-allowed text-blue-400 bg-blue-50 border-blue-200' : 'hover:bg-blue-100 text-blue-700 bg-blue-50 border-blue-300'}`}
+            >
+              <ArrowLeft size={20} /> Trước
+            </button>
+
+            <button
+              onClick={handleNext}
+              className="flex items-center gap-2 px-8 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 shadow-lg hover:shadow-blue-500/30 transition-all"
+            >
+              Tiếp theo <ArrowRight size={20} />
+            </button>
           </div>
         </div>
 
         {/* Sidebar Navigation (Desktop) */}
-        <div className="w-full md:w-64 bg-gray-50 border-l border-gray-200 p-4 overflow-y-auto hidden md:block">
+        <div className="w-full md:w-72 bg-gray-50 border-l border-gray-200 p-4 hidden md:flex md:flex-col">
           <h4 className="font-bold text-gray-500 text-sm uppercase tracking-wider mb-4">Danh sách câu hỏi</h4>
-          <div className="grid grid-cols-4 gap-2">
-            {usedQuestions.map((q, idx) => (
-              <button
-                key={q.id}
-                onClick={() => setCurrentQuestionIndex(idx)}
-                className={`
-                  h-10 rounded-lg font-bold text-sm transition-all
-                  ${currentQuestionIndex === idx ? 'ring-2 ring-blue-500 ring-offset-1' : ''}
-                  ${selectedAnswers[q.id] !== undefined 
-                    ? 'bg-blue-100 text-blue-700 border border-blue-200' 
-                    : 'bg-white text-gray-400 border border-gray-200 hover:border-gray-300'}
-                `}
-              >
-                {idx + 1}
-              </button>
-            ))}
+          <div className="max-h-[46vh] overflow-y-auto pr-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+            <div className="grid grid-cols-5 lg:grid-cols-6 gap-1.5">
+              {usedQuestions.map((q, idx) => {
+                const selectedOptionIndex = selectedAnswers[q.id];
+                const selectedOptionLabel = selectedOptionIndex !== undefined ? String.fromCharCode(65 + selectedOptionIndex) : null;
+
+                return (
+                  <button
+                    key={q.id}
+                    onClick={() => setCurrentQuestionIndex(idx)}
+                    className={`
+                      relative h-8 rounded-md font-bold text-xs transition-all
+                      ${currentQuestionIndex === idx ? 'ring-2 ring-blue-500 ring-offset-1' : ''}
+                      ${selectedOptionIndex !== undefined
+                        ? 'bg-blue-100 text-blue-700 border border-blue-200'
+                        : 'bg-white text-gray-400 border border-gray-200 hover:border-gray-300'}
+                    `}
+                  >
+                    {idx + 1}
+                    {selectedOptionLabel && (
+                      <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full text-[9px] leading-4 font-extrabold shadow-sm bg-blue-600 text-white">
+                        {selectedOptionLabel}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
           
-          <div className="mt-8 p-4 bg-yellow-50 rounded-xl border border-yellow-100">
+          <div className="mt-4 p-4 bg-yellow-50 rounded-xl border border-yellow-100">
             <div className="flex items-start gap-2">
               <AlertTriangle size={16} className="text-yellow-600 mt-0.5" />
               <p className="text-xs text-yellow-800">
@@ -311,35 +362,16 @@ export const QuizGame: React.FC<QuizGameProps> = ({ examTitle, questions, onExit
               </p>
             </div>
           </div>
+          
+          <button
+            onClick={handleSubmit}
+            className="w-full mt-4 flex items-center justify-center gap-2 px-6 py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 shadow-lg hover:shadow-green-500/30 transition-all"
+          >
+            {submitButtonText} <CheckCircle size={20} />
+          </button>
         </div>
       </div>
 
-      {/* Footer Navigation */}
-      <div className="p-4 bg-white border-t border-gray-100 flex items-center justify-between">
-        <button 
-          onClick={handlePrev}
-          disabled={currentQuestionIndex === 0}
-          className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all ${currentQuestionIndex === 0 ? 'opacity-50 cursor-not-allowed text-gray-400' : 'hover:bg-gray-100 text-gray-700'}`}
-        >
-          <ArrowLeft size={20} /> Trước
-        </button>
-
-        {currentQuestionIndex === totalQuestions - 1 ? (
-           <button 
-            onClick={handleSubmit}
-            className="flex items-center gap-2 px-8 py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 shadow-lg hover:shadow-green-500/30 transition-all"
-          >
-            Nộp bài <CheckCircle size={20} />
-          </button>
-        ) : (
-          <button 
-            onClick={handleNext}
-            className="flex items-center gap-2 px-8 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 shadow-lg hover:shadow-blue-500/30 transition-all"
-          >
-            Tiếp theo <ArrowRight size={20} />
-          </button>
-        )}
-      </div>
     </div>
   );
 };

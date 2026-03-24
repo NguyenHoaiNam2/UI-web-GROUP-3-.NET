@@ -24,7 +24,7 @@ interface HomePageProps {
 
 export const HomePage: React.FC<HomePageProps> = ({ onNavigateToThi, onNavigateToDocs }) => {
   return (
-    <div className="flex-1 flex flex-col w-full bg-white">
+    <div className="flex-1 flex flex-col w-full bg-gradient-to-b from-white/80 via-blue-50/50 to-white/80 animate-fade-in">
       {/* Hero Section */}
       <section className="relative w-full h-[600px] overflow-hidden flex items-center">
         {/* Background Image with Overlay */}
@@ -105,7 +105,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigateToThi, onNavigateT
       </section>
 
       {/* General Info Section */}
-      <section className="py-20 bg-white">
+      <section className="py-20 bg-white/70">
         <div className="container mx-auto px-8">
           <div className="flex flex-col md:flex-row items-center gap-16">
             <div className="flex-1 space-y-6">
@@ -156,7 +156,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigateToThi, onNavigateT
       </section>
 
       {/* Exam Structure Section */}
-      <section className="py-20 bg-blue-50">
+      <section className="py-20 bg-blue-50/70">
         <div className="container mx-auto px-8">
           <div className="text-center max-w-3xl mx-auto mb-16">
             <span className="text-blue-600 font-bold uppercase tracking-wider text-sm">Quy chuẩn 600 câu</span>
@@ -217,7 +217,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigateToThi, onNavigateT
       </section>
 
       {/* Question Bank Section */}
-      <section className="py-20 bg-white">
+      <section className="py-20 bg-white/70">
         <div className="container mx-auto px-8">
           <div className="flex flex-col lg:flex-row gap-16">
             <div className="lg:w-1/3 space-y-6">
@@ -270,7 +270,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigateToThi, onNavigateT
       </section>
 
       {/* User Guide Section */}
-      <section className="py-20 bg-gray-50">
+      <section className="py-20 bg-gray-50/70">
         <div className="container mx-auto px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold text-gray-800">Hướng Dẫn Sử Dụng</h2>
@@ -325,7 +325,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigateToThi, onNavigateT
       </section>
 
       {/* Stats & Results Preview */}
-      <section className="py-20 bg-white">
+      <section className="py-20 bg-white/70">
         <div className="container mx-auto px-8 text-center">
            <h2 className="text-3xl font-bold text-gray-800 mb-12">Kết Quả & Phân Tích Chi Tiết</h2>
            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -338,7 +338,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigateToThi, onNavigateT
       </section>
 
       {/* FAQ & Support */}
-      <section className="py-20 bg-blue-50 border-t border-blue-100">
+      <section className="py-20 bg-blue-50/70 border-t border-blue-100">
         <div className="container mx-auto px-8 max-w-4xl">
            <h2 className="text-3xl font-bold text-center text-gray-800 mb-12">Câu Hỏi Thường Gặp</h2>
            
