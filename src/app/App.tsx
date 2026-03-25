@@ -5,7 +5,6 @@ import logoImage from '@/assets/logo.svg';
 import userAvatar from '@/assets/avatar.svg';
 import pageBackground from '@/assets/background-main.png';
 import { AuthPage } from '@/app/components/AuthPage';
-import { AdminLogin } from '@/app/components/AdminLogin';
 import { ProfilePage } from '@/app/components/ProfilePage';
 import { HistoryPage } from '@/app/components/HistoryPage';
 import { ThiPage } from '@/app/components/ThiPage';
@@ -47,9 +46,7 @@ const App = () => {
   const [currentPage, setCurrentPage] = useState<PageKey>(() => {
     try {
       if (typeof window !== 'undefined') {
-        const saved = window.localStorage.getItem('currentPage') as PageKey | null;
-        const validKeys: PageKey[] = ['HOME','INTRO','THI','REVIEW','DOCS','PROFILE','HISTORY','PRIVACY','CONTACT','ADMIN'];
-        if (saved && validKeys.includes(saved)) return saved;
+        // Prefer the current pathname (useful when user navigates directly to /admin)
         const path = window.location.pathname || '/';
         if (path === '/admin') return 'ADMIN';
         if (path.startsWith('/intro') || path.startsWith('/gioi-thieu')) return 'INTRO';
@@ -60,6 +57,11 @@ const App = () => {
         if (path.startsWith('/history')) return 'HISTORY';
         if (path.startsWith('/privacy')) return 'PRIVACY';
         if (path.startsWith('/contact')) return 'CONTACT';
+
+        // Fall back to saved page in localStorage
+        const saved = window.localStorage.getItem('currentPage') as PageKey | null;
+        const validKeys: PageKey[] = ['HOME','INTRO','THI','REVIEW','DOCS','PROFILE','HISTORY','PRIVACY','CONTACT','ADMIN'];
+        if (saved && validKeys.includes(saved)) return saved;
       }
     } catch (err) {
       // ignore
@@ -334,10 +336,7 @@ const App = () => {
     );
   }
 
-  // If user navigates directly to /admin, render admin login wrapper
-  if (typeof window !== 'undefined' && window.location.pathname === '/admin') {
-    return <AdminLogin questions={questions} setQuestions={setQuestions} />;
-  }
+  // (Admin login removed) allow AdminPage to be rendered directly via currentPage = 'ADMIN'
 
   const renderContent = () => {
     switch (currentPage) {
