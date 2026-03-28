@@ -104,15 +104,15 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigateToThi, onNavigateT
         </div>
       </section>
 
-      {/* General Info Section */}
-      <section className="py-20 bg-white/70">
+      {/* General Info Section (white background as requested) */}
+      <section className="py-20 bg-white">
         <div className="container mx-auto px-8">
           <div className="flex flex-col md:flex-row items-center gap-16">
             <div className="flex-1 space-y-6">
               <span className="text-blue-600 font-bold uppercase tracking-wider text-sm">Về Hệ Thống</span>
               <h2 className="text-3xl md:text-4xl font-bold text-gray-800">Thông Tin Chung</h2>
               <div className="w-20 h-1 bg-blue-500 rounded-full"></div>
-              
+
               <div className="space-y-4 text-gray-600 leading-relaxed">
                 <p>
                   <strong className="text-gray-900">Giới thiệu:</strong> Website cung cấp giải pháp thi thử và ôn tập lý thuyết lái xe ô tô trực tuyến, mô phỏng chính xác phần mềm sát hạch quốc gia.
@@ -128,19 +128,19 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigateToThi, onNavigateT
               <div className="grid grid-cols-2 gap-4 pt-4">
                 <div className="flex items-center gap-3">
                   <CheckCircle className="text-green-500" size={20} />
-                  <span className="font-medium">Giao diện chuẩn</span>
+                  <span className="font-medium text-gray-800">Giao diện chuẩn</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <CheckCircle className="text-green-500" size={20} />
-                  <span className="font-medium">Dữ liệu mới nhất</span>
+                  <span className="font-medium text-gray-800">Dữ liệu mới nhất</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <CheckCircle className="text-green-500" size={20} />
-                  <span className="font-medium">Kết quả tức thì</span>
+                  <span className="font-medium text-gray-800">Kết quả tức thì</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <CheckCircle className="text-green-500" size={20} />
-                  <span className="font-medium">Hoàn toàn miễn phí</span>
+                  <span className="font-medium text-gray-800">Hoàn toàn miễn phí</span>
                 </div>
               </div>
             </div>
@@ -155,13 +155,13 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigateToThi, onNavigateT
         </div>
       </section>
 
-      {/* Exam Structure Section */}
-      <section className="py-20 bg-blue-50/70">
+  {/* Exam Structure Section */}
+  <section className="py-20 bg-blue-600/70 text-white">
         <div className="container mx-auto px-8">
           <div className="text-center max-w-3xl mx-auto mb-16">
-            <span className="text-blue-600 font-bold uppercase tracking-wider text-sm">Quy chuẩn 600 câu</span>
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mt-2">Thông Tin Kỳ Thi</h2>
-            <p className="text-gray-600 mt-4">Cấu trúc đề thi và điều kiện đậu cho từng hạng bằng.</p>
+            <span className="text-blue-200 font-bold uppercase tracking-wider text-sm">Quy chuẩn 600 câu</span>
+            <h2 className="text-3xl md:text-4xl font-bold text-white mt-2">Thông Tin Kỳ Thi</h2>
+            <p className="text-white/90 mt-4">Cấu trúc đề thi và điều kiện đậu cho từng hạng bằng.</p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -269,12 +269,12 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigateToThi, onNavigateT
         </div>
       </section>
 
-      {/* User Guide Section */}
-      <section className="py-20 bg-gray-50/70">
+  {/* User Guide Section */}
+  <section className="py-20 bg-blue-600/70 text-white">
         <div className="container mx-auto px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-gray-800">Hướng Dẫn Sử Dụng</h2>
-            <p className="text-gray-600 mt-2">Quy trình 3 bước đơn giản để bắt đầu ôn luyện.</p>
+            <h2 className="text-3xl font-bold text-white">Hướng Dẫn Sử Dụng</h2>
+            <p className="text-white/90 mt-2">Quy trình 3 bước đơn giản để bắt đầu ôn luyện.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
@@ -337,22 +337,22 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigateToThi, onNavigateT
         </div>
       </section>
 
-      {/* FAQ & Support */}
-      <section className="py-20 bg-blue-50/70 border-t border-blue-100">
+  {/* FAQ & Support */}
+  <section className="py-20 bg-blue-600/70 text-white">
         <div className="container mx-auto px-8 max-w-4xl">
-           <h2 className="text-3xl font-bold text-center text-gray-800 mb-12">Câu Hỏi Thường Gặp</h2>
+           <h2 className="text-3xl font-bold text-center text-white mb-12">Câu Hỏi Thường Gặp</h2>
            
            <Accordion.Root type="single" defaultValue="item-1" collapsible className="space-y-4">
-              <AccordionItem value="item-1" question="Đề thi có giống thi thật không?">
+              <AccordionItem white value="item-1" question="Đề thi có giống thi thật không?">
                 Cấu trúc và nội dung giống 100% đề thi của Bộ GTVT. Chúng tôi cập nhật dữ liệu thường xuyên để đảm bảo tính chính xác.
               </AccordionItem>
-              <AccordionItem value="item-2" question="Quên mật khẩu lấy lại thế nào?">
+              <AccordionItem white value="item-2" question="Quên mật khẩu lấy lại thế nào?">
                 Bạn có thể sử dụng chức năng "Quên mật khẩu" ở màn hình đăng nhập. Hệ thống sẽ gửi email hướng dẫn đặt lại mật khẩu cho bạn.
               </AccordionItem>
-              <AccordionItem value="item-3" question="Tôi có cần trả phí để sử dụng không?">
+              <AccordionItem white value="item-3" question="Tôi có cần trả phí để sử dụng không?">
                 Hiện tại, nền tảng GROUP 3 .NET TECH cung cấp các tính năng thi thử và ôn tập hoàn toàn miễn phí cho cộng đồng.
               </AccordionItem>
-              <AccordionItem value="item-4" question="Làm sao để xem lại các câu đã làm sai?">
+              <AccordionItem white value="item-4" question="Làm sao để xem lại các câu đã làm sai?">
                 Sau khi nộp bài, bạn có thể xem chi tiết bài làm. Ngoài ra, trong phần "Ôn Tập", bạn có thể chọn chế độ "Câu hay sai" để luyện tập lại.
               </AccordionItem>
            </Accordion.Root>
@@ -387,7 +387,7 @@ const ExamCard = ({ title, questions, time, passScore, icon, color }: { title: s
 
 const StepCard = ({ step, title, description }: { step: string, title: string, description: string }) => (
   <div className="relative p-6 bg-white rounded-xl border border-gray-100 shadow-sm hover:border-blue-200 transition-colors">
-    <div className="absolute -top-4 -left-4 w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold shadow-md text-lg">
+    <div className="absolute -top-4 -left-4 w-10 h-10 bg-white text-blue-600 rounded-full flex items-center justify-center font-bold shadow-md text-lg">
       {step}
     </div>
     <h3 className="font-bold text-xl text-gray-800 mb-3 mt-2">{title}</h3>
@@ -403,15 +403,15 @@ const StatFeature = ({ title, desc, icon }: { title: string, desc: string, icon:
   </div>
 );
 
-const AccordionItem = ({ value, question, children }: { value: string, question: string, children: React.ReactNode }) => (
-  <Accordion.Item value={value} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+const AccordionItem = ({ value, question, children, white }: { value: string, question: string, children: React.ReactNode, white?: boolean }) => (
+  <Accordion.Item value={value} className={`${white ? 'bg-white rounded-xl border border-gray-200 overflow-hidden' : 'bg-blue-700/30 rounded-xl border border-blue-500/20 overflow-hidden'}`}>
     <Accordion.Header className="flex">
-      <Accordion.Trigger className="flex-1 flex items-center justify-between p-4 font-bold text-gray-800 hover:bg-gray-50 transition-colors [&[data-state=open]>svg]:rotate-180 text-left">
+      <Accordion.Trigger className={`${white ? 'flex-1 flex items-center justify-between p-4 font-bold text-gray-800 hover:bg-gray-50 transition-colors [&[data-state=open]>svg]:rotate-180 text-left' : 'flex-1 flex items-center justify-between p-4 font-bold text-white hover:bg-blue-700/40 transition-colors [&[data-state=open]>svg]:rotate-180 text-left'}`}>
         {question}
-        <ChevronDown className="text-gray-400 transition-transform duration-300" size={20} />
+        <ChevronDown className={`${white ? 'text-gray-400 transition-transform duration-300' : 'text-white/80 transition-transform duration-300'}`} size={20} />
       </Accordion.Trigger>
     </Accordion.Header>
-    <Accordion.Content className="p-4 pt-0 text-gray-600 text-sm leading-relaxed border-t border-gray-100 bg-gray-50/50 data-[state=open]:animate-slideDown data-[state=closed]:animate-slideUp overflow-hidden">
+    <Accordion.Content className={`${white ? 'p-4 pt-0 text-gray-600 text-sm leading-relaxed border-t border-gray-100 bg-white/50 data-[state=open]:animate-slideDown data-[state=closed]:animate-slideUp overflow-hidden' : 'p-4 pt-0 text-white/90 text-sm leading-relaxed border-t border-blue-500/10 bg-blue-700/20 data-[state=open]:animate-slideDown data-[state=closed]:animate-slideUp overflow-hidden'}`}>
        <div className="pt-4">{children}</div>
     </Accordion.Content>
   </Accordion.Item>
