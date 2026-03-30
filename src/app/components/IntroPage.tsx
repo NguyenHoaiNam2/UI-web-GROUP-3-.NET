@@ -147,31 +147,34 @@ const IntroPage: React.FC<IntroPageProps> = ({ onNavigateToThi, onNavigateToDocs
               </div>
               
               <ul className="space-y-6">
-                <li className="flex items-start bg-gray-50/50 p-4 rounded-2xl border border-gray-100 hover:shadow-md transition-shadow">
-                  <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center shrink-0 mr-4">
-                    <span className="text-blue-600 font-bold">✔</span>
+                <li className="flex items-start bg-white p-5 rounded-2xl shadow-md border-l-4 border-l-blue-500 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-bl-full -z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center shrink-0 mr-5 shadow-sm">
+                    <span className="text-blue-600 font-bold text-lg">✔</span>
                   </div>
                   <div>
-                    <h4 className="font-bold text-gray-900 text-lg">Backend API</h4>
-                    <p className="text-gray-600 mt-1">ASP.NET Core Web API mạnh mẽ, bảo mật.</p>
+                    <h4 className="font-bold text-gray-900 text-xl tracking-tight">Backend API</h4>
+                    <p className="text-gray-600 mt-2 leading-relaxed">ASP.NET Core Web API mạnh mẽ, bảo mật.</p>
                   </div>
                 </li>
-                <li className="flex items-start bg-gray-50/50 p-4 rounded-2xl border border-gray-100 hover:shadow-md transition-shadow">
-                  <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center shrink-0 mr-4">
-                    <span className="text-blue-600 font-bold">✔</span>
+                <li className="flex items-start bg-white p-5 rounded-2xl shadow-md border-l-4 border-l-blue-500 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-bl-full -z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center shrink-0 mr-5 shadow-sm">
+                    <span className="text-blue-600 font-bold text-lg">✔</span>
                   </div>
                   <div>
-                    <h4 className="font-bold text-gray-900 text-lg">Phần mềm đa nền tảng</h4>
-                    <p className="text-gray-600 mt-1">Giao diện hiện đại phát triển bằng React & .NET MAUI.</p>
+                    <h4 className="font-bold text-gray-900 text-xl tracking-tight">Phần mềm đa nền tảng</h4>
+                    <p className="text-gray-600 mt-2 leading-relaxed">Giao diện hiện đại phát triển bằng React & .NET MAUI.</p>
                   </div>
                 </li>
-                <li className="flex items-start bg-gray-50/50 p-4 rounded-2xl border border-gray-100 hover:shadow-md transition-shadow">
-                  <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center shrink-0 mr-4">
-                    <span className="text-blue-600 font-bold">✔</span>
+                <li className="flex items-start bg-white p-5 rounded-2xl shadow-md border-l-4 border-l-blue-500 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-bl-full -z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center shrink-0 mr-5 shadow-sm">
+                    <span className="text-blue-600 font-bold text-lg">✔</span>
                   </div>
                   <div>
-                    <h4 className="font-bold text-gray-900 text-lg">Trải nghiệm Offline</h4>
-                    <p className="text-gray-600 mt-1">Tính năng đồng bộ cục bộ, ôn tập mọi lúc mọi nơi không cần Wifi.</p>
+                    <h4 className="font-bold text-gray-900 text-xl tracking-tight">Trải nghiệm Offline</h4>
+                    <p className="text-gray-600 mt-2 leading-relaxed">Tính năng đồng bộ cục bộ, ôn tập mọi lúc mọi nơi không cần Wifi.</p>
                   </div>
                 </li>
               </ul>

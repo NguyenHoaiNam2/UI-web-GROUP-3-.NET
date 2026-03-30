@@ -330,6 +330,7 @@ const App = () => {
               setShowAuthPage(false);
               handlePageChange('PRIVACY');
             }}
+            onBack={() => setShowAuthPage(false)}
           />
         </motion.div>
       </AnimatePresence>

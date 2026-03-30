@@ -33,6 +33,8 @@ export const QuizGame: React.FC<QuizGameProps> = ({ examTitle, questions, onExit
   const defaultTime = (examConfig?.timeSeconds) ?? (22 * 60);
   const [timeLeft, setTimeLeft] = useState(defaultTime);
   const [showResult, setShowResult] = useState(!!startShowResult);
+  const [showResultStep, setShowResultStep] = useState(false);
+  const [timeElapsed, setTimeElapsed] = useState(0);
 
   // If no questions are provided, show loading state
   if (!questions || questions.length === 0) {
@@ -197,20 +199,23 @@ export const QuizGame: React.FC<QuizGameProps> = ({ examTitle, questions, onExit
 
   if (showResult) {
     const outerClass = resultFullPage
-      ? 'w-full h-full mx-0 bg-white rounded-none shadow-none overflow-hidden animate-fade-in flex flex-col'
-      : 'w-full max-w-4xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden animate-fade-in';
+      ? 'w-full h-full mx-0 bg-gray-50 rounded-none shadow-none overflow-hidden animate-fade-in flex flex-col'
+      : 'w-full max-w-4xl mx-auto bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden animate-fade-in';
 
-    const bodyClass = resultFullPage ? 'p-8 flex-1 overflow-y-auto' : 'p-8 max-h-[60vh] overflow-y-auto';
+    const bodyClass = resultFullPage ? 'p-8 flex-1 overflow-y-auto max-w-5xl mx-auto w-full' : 'p-8 max-h-[70vh] overflow-y-auto';
 
     return (
       <div className={outerClass}>
-        <div className={`p-8 text-center text-white ${isPassed ? 'bg-green-600' : 'bg-red-500'}`}>
-          {isPassed ? <CheckCircle size={80} className="mx-auto mb-4" /> : <XCircle size={80} className="mx-auto mb-4" />}
-          <h2 className="text-4xl font-bold mb-2">{isPassed ? "ĐẠT" : "KHÔNG ĐẠT"}</h2>
-          <p className="text-xl opacity-90">Bạn đã trả lời đúng {correctCount}/{totalQuestions} câu hỏi</p>
-          {!isPassed && failedByCritical && (
-            <p className="mt-2 text-sm opacity-90">Bạn không đạt do trả lời sai câu điểm liệt (câu bắt buộc).</p>
-          )}
+        <div className={`p-10 text-center text-white relative overflow-hidden ${isPassed ? 'bg-green-600' : 'bg-red-500'}`}>
+          <div className="absolute inset-0 bg-black/10"></div>
+          <div className="relative z-10 flex flex-col items-center">
+            {isPassed ? <CheckCircle size={80} className="mx-auto mb-4 drop-shadow-md" /> : <XCircle size={80} className="mx-auto mb-4 drop-shadow-md" />}
+            <h2 className="text-4xl font-extrabold mb-2 tracking-tight drop-shadow-sm">{isPassed ? "ĐẠT KẾT QUẢ" : "KHÔNG ĐẠT"}</h2>
+            <p className="text-xl font-medium text-white/90">Bạn đã trả lời đúng {correctCount}/{totalQuestions} câu hỏi</p>
+            {!isPassed && failedByCritical && (
+              <p className="mt-3 inline-block bg-red-900/40 px-4 py-1.5 rounded-lg text-sm font-semibold border border-red-400/50">Bạn không đạt do trả lời sai câu điểm liệt (câu bắt buộc).</p>
+            )}
+          </div>
         </div>
         
         <div className={bodyClass}>
@@ -283,222 +288,247 @@ export const QuizGame: React.FC<QuizGameProps> = ({ examTitle, questions, onExit
   }
 
   return (
-    <div className="w-full max-w-5xl mx-auto flex flex-col h-full bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
-      {/* Header */}
-      <div className="bg-blue-600 text-white p-4 flex items-center justify-between shadow-md z-10">
-        <div>
-          <h2 className="font-bold text-lg opacity-90">{examTitle}</h2>
-          <div className="text-sm opacity-75">Câu hỏi {currentQuestionIndex + 1}/{totalQuestions}</div>
-        </div>
-        {showTimer && (
-          <div className={`flex items-center gap-2 font-mono text-2xl font-bold px-4 py-1 rounded-lg ${timeLeft < 60 ? 'bg-red-500 animate-pulse' : 'bg-blue-500/50'}`}>
-            <Clock size={24} />
-            {formatTime(timeLeft)}
-          </div>
-        )}
-      </div>
-
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
-        {/* Question Area */}
-        <div className="flex-1 p-6 md:p-8 overflow-y-auto">
-          <div className="mb-6">
-            <span className="inline-block px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-bold mb-3">
-              Câu {currentQuestionIndex + 1}
+    <div className="w-full flex-1 flex flex-col md:flex-row bg-white text-gray-800 overflow-hidden">
+      {/* Sidebar Navigation */}
+      <div className="w-full md:w-80 bg-gray-50 border-r border-gray-200 flex flex-col h-full shadow-lg z-10 flex-shrink-0">
+        
+        {/* Timer & Info */}
+        <div className="p-6 border-b border-gray-200 bg-white">
+          <div className="flex justify-between items-center mb-4 text-gray-500">
+            <span className="text-sm font-semibold uppercase tracking-wider">Thời gian còn lại</span>
+            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded font-bold">
+              {correctCount}/{totalQuestions} câu
             </span>
-            <h3 className="text-2xl font-bold text-gray-800 leading-snug">
-              {currentQuestion.content}
-            </h3>
-            {currentQuestion.imageUrl && (
-              <img src={currentQuestion.imageUrl} alt="Question illustration" className="mt-4 rounded-xl border border-gray-200 max-h-64 object-contain" />
-            )}
           </div>
+          
+          {showTimer && (
+            <div className={`flex items-center justify-center gap-3 font-mono text-4xl p-4 rounded-xl font-bold shadow-inner ${timeLeft < 60 ? 'bg-red-50 text-red-600 border border-red-200 animate-pulse' : 'bg-blue-50 text-blue-700 border border-blue-200'}`}>
+              <Clock size={28} className={timeLeft < 60 ? 'text-red-500' : 'text-blue-600'} />
+              {formatTime(timeLeft)}
+            </div>
+          )}
+        </div>
 
-          <div className="space-y-3">
-            {currentQuestion.options.map((option, index) => {
-              const userAns = selectedAnswers[currentQuestion.id];
-              const isAnswered = userAns !== undefined;
-              const isOptCorrect = index === currentQuestion.correctAnswer;
-              const isOptUser = index === userAns;
-
-              // When immediate explanation mode is active (review), show green for correct answer
-              // and red for the user's wrong selection. Otherwise keep original selection styling.
-              let optionClass = 'w-full text-left p-4 rounded-xl border-2 transition-all duration-200 flex items-center gap-4 group ';
-              if (isAnswered && showImmediateExplanation) {
-                if (isOptCorrect) {
-                  optionClass += 'border-green-500 bg-green-100 text-green-900 shadow-md';
-                } else if (isOptUser && !isOptCorrect) {
-                  optionClass += 'border-red-500 bg-red-100 text-red-900';
-                } else {
-                  optionClass += 'border-gray-200 bg-transparent text-gray-700';
-                }
-              } else {
-                optionClass += isOptUser ? 'border-blue-500 bg-blue-50 text-blue-900 shadow-md' : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50 text-gray-700';
+        {/* Question List */}
+        <div className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+          <h4 className="font-bold text-gray-500 text-xs uppercase tracking-wider mb-4 flex items-center justify-between">
+            <span>Danh sách câu hỏi</span>
+            <span className="text-gray-400">{Object.keys(selectedAnswers).length}/{totalQuestions}</span>
+          </h4>
+          
+          <div className="grid grid-cols-5 gap-2.5">
+            {usedQuestions.map((q, idx) => {
+              const selectedOptionIndex = selectedAnswers[q.id];
+              const isAnswered = selectedOptionIndex !== undefined;
+              const isCurrent = currentQuestionIndex === idx;
+              const isMarked = unsureQuestions[q.id];
+              
+              let btnClass = "bg-white text-gray-600 border-gray-200 hover:bg-gray-100 hover:border-gray-300 shadow-sm";
+              if (isCurrent || isMarked) {
+                btnClass = "bg-yellow-50 text-yellow-700 border-yellow-300 shadow-[0_0_10px_rgba(253,224,71,0.4)]";
+              } else if (isAnswered) {
+                btnClass = "bg-green-50 text-green-700 border-green-300";
               }
+              
+              const selectedOptionLabel = isAnswered ? String.fromCharCode(65 + selectedOptionIndex) : null;
 
               return (
                 <button
-                  key={index}
-                  onClick={() => handleSelectAnswer(index)}
-                  className={optionClass}
+                  key={q.id}
+                  onClick={() => setCurrentQuestionIndex(idx)}
+                  type="button"
+                  className={`
+                    relative w-full aspect-square flex items-center justify-center rounded-lg font-bold text-sm border 
+                    transition-all duration-200 select-none box-border
+                    ${btnClass}
+                    ${isCurrent ? 'ring-2 ring-blue-500 ring-offset-2 scale-105 z-10' : ''}
+                  `}
                 >
-                  {/* Radio-like marker */}
-                  <div className="flex items-center justify-center flex-shrink-0">
-                    {isAnswered && showImmediateExplanation ? (
-                      isOptCorrect ? (
-                        <div className="w-8 h-8 rounded-full bg-green-600 flex items-center justify-center text-white">
-                          <CheckCircle size={14} />
-                        </div>
-                      ) : isOptUser ? (
-                        <div className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center text-white">
-                          <XCircle size={14} />
-                        </div>
-                      ) : (
-                        <div className="w-8 h-8 rounded-full border-2 border-gray-300 flex items-center justify-center text-gray-400">
-                          <span className="text-sm font-semibold">{String.fromCharCode(65 + index)}</span>
-                        </div>
-                      )
-                    ) : (
-                      isOptUser ? (
-                        <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white">
-                          <CheckCircle size={14} />
-                        </div>
-                      ) : (
-                        <div className="w-8 h-8 rounded-full border-2 border-gray-300 flex items-center justify-center text-gray-400">
-                          <span className="text-sm font-semibold">{String.fromCharCode(65 + index)}</span>
-                        </div>
-                      )
-                    )}
-                  </div>
-                  <span className="text-lg font-medium">{option}</span>
+                  <span className="pointer-events-none">{idx + 1}</span>
+                  {selectedOptionLabel && (
+                    <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-[20px] rounded-full text-[10px] flex items-center justify-center font-extrabold shadow-sm bg-blue-600 text-white border-2 border-white">
+                      {selectedOptionLabel}
+                    </span>
+                  )}
+                  {isMarked && !selectedOptionLabel && (
+                     <span className="absolute -top-1.5 -left-1.5 min-w-[20px] h-[20px] rounded-full text-[10px] flex items-center justify-center font-extrabold shadow-sm bg-yellow-500 text-white border-2 border-white">
+                       ?
+                     </span>
+                  )}
                 </button>
               );
             })}
+          </div>
+        </div>
+        
+        {/* Submit Actions */}
+        <div className="p-6 border-t border-gray-200 bg-white backdrop-blur-sm">
+          <button
+            onClick={handleSubmit}
+            className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold shadow-lg shadow-green-600/30 transition-all hover:-translate-y-0.5"
+          >
+            <CheckCircle size={20} /> {submitButtonText}
+          </button>
+        </div>
+      </div>
 
-            {/* Mark unsure checkbox (optional) */}
-            {allowUnsure && (
-              <div className="mt-3 flex items-center gap-3">
-                <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+      {/* Main Content Area (Right) */}
+      <div className="flex-1 flex flex-col h-full overflow-hidden bg-white relative">
+        <div className="flex-1 overflow-y-auto p-6 md:p-10 lg:p-12 pb-32">
+          
+          <div className="max-w-5xl mx-auto h-full flex flex-col">
+            {/* Header info for question */}
+            <div className="mb-6 flex items-center justify-between">
+              <span className="inline-flex py-1.5 px-4 bg-blue-50 text-blue-700 rounded-lg text-sm font-bold border border-blue-200 shadow-sm">
+                Câu {currentQuestionIndex + 1} / {totalQuestions}
+              </span>
+              
+              {allowUnsure && (
+                <label className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-yellow-600 cursor-pointer transition-colors bg-white py-1.5 px-4 rounded-lg border border-gray-200 shadow-sm">
                   <input
                     type="checkbox"
                     checked={!!unsureQuestions[currentQuestion.id]}
                     onChange={handleToggleUnsure}
-                    className="w-4 h-4 rounded border-gray-300 text-yellow-500 focus:ring-yellow-400"
+                    className="w-4 h-4 rounded border-gray-300 bg-white text-yellow-500 focus:ring-yellow-400 focus:ring-offset-white"
                   />
-                  <span className="select-none">Đánh dấu không chắc</span>
+                  <span className="select-none font-medium">Đánh dấu xem lại</span>
                 </label>
-                {unsureQuestions[currentQuestion.id] && (
-                  <span className="text-xs text-yellow-700 bg-yellow-100 px-2 py-0.5 rounded">Đã đánh dấu</span>
+              )}
+            </div>
+
+            {/* Split View for Question: Text & Image */}
+            <div className={`flex flex-col ${currentQuestion.imageUrl ? 'lg:flex-row gap-8 lg:gap-12' : ''} mb-8`}>
+              
+              {/* Question Text & Options */}
+              <div className={`flex-1 flex flex-col space-y-6 ${currentQuestion.imageUrl ? 'lg:w-1/2' : ''}`}>
+                <h3 className="text-[22px] md:text-2xl font-bold text-gray-800 leading-relaxed">
+                  {currentQuestion.content}
+                </h3>
+
+                <div className="space-y-3 mt-4">
+                  {currentQuestion.options.map((option, index) => {
+                    const userAns = selectedAnswers[currentQuestion.id];
+                    const isAnswered = userAns !== undefined;
+                    const isOptCorrect = index === currentQuestion.correctAnswer;
+                    const isOptUser = index === userAns;
+
+                    let optionClass = 'w-full text-left p-4 md:p-5 rounded-xl border transition-all duration-200 flex items-start gap-4 group ';
+                    
+                    if (isAnswered && showImmediateExplanation) {
+                      if (isOptCorrect) {
+                        optionClass += 'bg-green-50 border-green-500 text-green-800 shadow-md';
+                      } else if (isOptUser && !isOptCorrect) {
+                        optionClass += 'bg-red-50 border-red-500 text-red-800';
+                      } else {
+                        optionClass += 'bg-gray-50 border-gray-200 text-gray-500 opacity-70';
+                      }
+                    } else {
+                      optionClass += isOptUser 
+                        ? 'bg-blue-50 border-blue-500 text-blue-900 shadow-md scale-[1.01]' 
+                        : 'bg-white hover:bg-blue-50/50 hover:border-blue-300 border-gray-200 text-gray-700';
+                    }
+
+                    return (
+                      <button
+                        key={index}
+                        onClick={() => handleSelectAnswer(index)}
+                        className={optionClass}
+                      >
+                        <div className="flex items-center justify-center flex-shrink-0 mt-0.5">
+                          {isAnswered && showImmediateExplanation ? (
+                            isOptCorrect ? (
+                              <div className="w-7 h-7 rounded-full bg-green-500 flex items-center justify-center text-white shadow-sm">
+                                <CheckCircle size={14} />
+                              </div>
+                            ) : isOptUser ? (
+                              <div className="w-7 h-7 rounded-full bg-red-500 flex items-center justify-center text-white shadow-sm">
+                                <XCircle size={14} />
+                              </div>
+                            ) : (
+                              <div className="w-7 h-7 rounded-full border-2 border-gray-300 flex items-center justify-center text-gray-400">
+                                <span className="text-xs font-bold">{String.fromCharCode(65 + index)}</span>
+                              </div>
+                            )
+                          ) : (
+                            isOptUser ? (
+                              <div className="w-7 h-7 rounded-full bg-blue-500 flex items-center justify-center text-white shadow-sm">
+                                <CheckCircle size={14} strokeWidth={3} />
+                              </div>
+                            ) : (
+                              <div className="w-7 h-7 rounded-full border-2 border-gray-300 group-hover:border-blue-400 flex items-center justify-center text-gray-400 group-hover:text-blue-500 transition-colors">
+                                <span className="text-xs font-bold">{String.fromCharCode(65 + index)}</span>
+                              </div>
+                            )
+                          )}
+                        </div>
+                        <span className="text-lg leading-snug">{option}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                
+                {/* Explanations (if shown immediately) */}
+                {showImmediateExplanation && selectedAnswers[currentQuestion.id] !== undefined && (
+                  <div className="mt-6 rounded-xl border border-gray-200 bg-gray-50/80 p-5 shadow-inner">
+                    {currentQuestion.explanation && (
+                      <div className="mb-4 text-[17px] leading-relaxed text-gray-700">
+                        <span className="font-bold text-yellow-600 mr-2 text-lg">💡 Giải thích:</span> 
+                        {currentQuestion.explanation}
+                      </div>
+                    )}
+                    <div className="inline-flex bg-white border border-gray-200 rounded-lg p-3 text-sm text-gray-600">
+                      <span className="font-semibold text-gray-500 mr-2">Đáp án đúng:</span>
+                      <strong className="text-green-600 ml-2">{currentQuestion.options[currentQuestion.correctAnswer]}</strong>
+                    </div>
+                  </div>
                 )}
               </div>
-            )}
 
-            {showImmediateExplanation && selectedAnswers[currentQuestion.id] !== undefined && (
-              <div
-                className={`mt-4 rounded-xl border-2 p-4 shadow-sm ${
-                  selectedAnswers[currentQuestion.id] === currentQuestion.correctAnswer
-                    ? 'border-green-300 bg-green-50'
-                    : 'border-red-300 bg-red-50'
-                }`}
-              >
-                <div className="mb-3 flex items-center gap-2">
-                  {selectedAnswers[currentQuestion.id] === currentQuestion.correctAnswer ? (
-                    <CheckCircle size={18} className="text-green-700" />
-                  ) : (
-                    <XCircle size={18} className="text-red-700" />
-                  )}
-                  {selectedAnswers[currentQuestion.id] === currentQuestion.correctAnswer ? (
-                    <span className="text-base font-bold text-green-800">Bạn trả lời đúng.</span>
-                  ) : (
-                    <span className="text-base font-bold text-red-800">Bạn trả lời sai.</span>
-                  )}
-                </div>
-
-                {currentQuestion.explanation ? (
-                  <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-[20px] leading-relaxed text-amber-900">
-                    <span className="font-bold text-amber-950">Giải thích:</span> {currentQuestion.explanation}
+              {/* Image Area (Takes right half if exists) */}
+              {currentQuestion.imageUrl && (
+                <div className="lg:w-1/2 flex items-start justify-center pt-2">
+                  <div className="w-full bg-gray-50/50 p-4 rounded-2xl border border-gray-200 flex items-center justify-center shadow-inner">
+                    <img 
+                      src={currentQuestion.imageUrl} 
+                      alt="Hình minh họa" 
+                      className="max-w-full max-h-[500px] object-contain rounded-xl drop-shadow-md" 
+                    />
                   </div>
-                ) : null}
-
-                <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
-                  <span className="font-semibold text-blue-950">Đáp án đúng:</span>{' '}
-                  <strong>{currentQuestion.options[currentQuestion.correctAnswer]}</strong>
                 </div>
-              </div>
-            )}
-          </div>
-
-          <div className="mt-6 flex w-full items-center justify-between gap-4">
-            <button
-              onClick={handlePrev}
-              disabled={currentQuestionIndex === 0}
-              className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold border transition-all ${currentQuestionIndex === 0 ? 'cursor-not-allowed text-blue-400 bg-blue-50 border-blue-200' : 'hover:bg-blue-100 text-blue-700 bg-blue-50 border-blue-300'}`}
-            >
-              <ArrowLeft size={20} /> Trước
-            </button>
-
-            <button
-              onClick={handleNext}
-              className="flex items-center gap-2 px-8 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 shadow-lg hover:shadow-blue-500/30 transition-all"
-            >
-              Tiếp theo <ArrowRight size={20} />
-            </button>
+              )}
+            </div>
+            
           </div>
         </div>
 
-  {/* Sidebar Navigation (Desktop) */}
-  <div className="w-full md:w-72 bg-transparent border-none p-4 hidden md:flex md:flex-col">
-          <h4 className="font-bold text-gray-500 text-sm uppercase tracking-wider mb-4">Danh sách câu hỏi</h4>
-          <div className="max-h-[46vh] overflow-y-auto pr-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-            <div className="grid grid-cols-5 lg:grid-cols-6 gap-2">
-              {usedQuestions.map((q, idx) => {
-                const selectedOptionIndex = selectedAnswers[q.id];
-                const selectedOptionLabel = selectedOptionIndex !== undefined ? String.fromCodePoint(65 + selectedOptionIndex) : null;
-
-                return (
-                  <button
-                    key={q.id}
-                    onClick={() => setCurrentQuestionIndex(idx)}
-                    type="button"
-                    className={`
-                      relative w-10 h-10 flex items-center justify-center rounded-md font-bold text-sm transition-all select-none box-border
-                      ${currentQuestionIndex === idx ? 'ring-2 ring-blue-500 ring-offset-1' : ''}
-                      ${selectedOptionIndex !== undefined
-                        ? 'bg-blue-100 text-blue-700 border border-blue-200'
-                        : 'bg-white text-gray-500 border border-gray-200 hover:border-gray-300'}
-                    `}
-                  >
-                    <span className="pointer-events-none">{idx + 1}</span>
-                    {selectedOptionLabel && (
-                      <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full text-[9px] leading-4 font-extrabold shadow-sm bg-blue-600 text-white">
-                        {selectedOptionLabel}
-                      </span>
-                    )}
-                    {allowUnsure && unsureQuestions[q.id] && (
-                      <span className="absolute -top-1 -left-1 min-w-4 h-4 px-1 rounded-full text-[9px] leading-4 font-extrabold shadow-sm bg-yellow-500 text-white">
-                        ?
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-          
-          <div className="mt-4 p-4 bg-yellow-50 rounded-xl border border-yellow-100">
-            <div className="flex items-start gap-2">
-              <AlertTriangle size={16} className="text-yellow-600 mt-0.5" />
-              <p className="text-xs text-yellow-800">
-                Hãy kiểm tra kỹ các câu hỏi trước khi nộp bài. Bạn có thể quay lại bất kỳ câu nào để thay đổi đáp án.
-              </p>
-            </div>
-          </div>
-          
+        {/* Floating Navigation Controls (Bottom Right style) */}
+        <div className="absolute bottom-6 right-6 md:bottom-10 md:right-10 flex items-center gap-2 bg-white/95 p-2 rounded-2xl border border-gray-200 shadow-2xl backdrop-blur-md z-10 w-[240px]">
           <button
-            onClick={handleSubmit}
-            className="w-full mt-4 flex items-center justify-center gap-2 px-6 py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 shadow-lg hover:shadow-green-500/30 transition-all"
+            onClick={handlePrev}
+            disabled={currentQuestionIndex === 0}
+            className={`flex-1 flex items-center justify-center py-3 rounded-xl font-bold transition-all ${
+              currentQuestionIndex === 0 
+                ? 'opacity-30 cursor-not-allowed text-gray-400 bg-gray-50' 
+                : 'hover:bg-gray-100 text-gray-700 hover:text-gray-900 active:scale-95 bg-white'
+            }`}
+            title="Câu trước"
           >
-            {submitButtonText} <CheckCircle size={20} />
+            <ArrowLeft size={20} className="mr-1" /> Trước
+          </button>
+
+          <div className="w-px h-8 bg-gray-200 mx-1"></div>
+
+          <button
+            onClick={handleNext}
+            disabled={currentQuestionIndex === totalQuestions - 1}
+            className={`flex-1 flex items-center justify-center py-3 rounded-xl font-bold transition-all ${
+              currentQuestionIndex === totalQuestions - 1 
+                ? 'opacity-30 cursor-not-allowed text-gray-400 bg-gray-50' 
+                : 'hover:bg-blue-600 text-blue-600 hover:text-white active:scale-95 bg-white border border-blue-100 shadow-lg shadow-blue-500/20'
+            }`}
+            title="Câu tiếp theo"
+          >
+            Tiếp <ArrowRight size={20} className="ml-1" />
           </button>
         </div>
       </div>

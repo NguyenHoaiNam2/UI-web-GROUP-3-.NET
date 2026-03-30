@@ -12,23 +12,29 @@ const LICENSE_TYPES = [
     description: "Ô tô số tự động, không kinh doanh (cá nhân, gia đình)",
     color: "text-green-500",
     bg: "bg-green-50",
-    border: "border-green-200"
+    border: "border-green-200",
+    stats: "30 câu / 20 phút",
+    colSpan: "md:col-span-3"
   },
   {
     code: "B2",
     name: "Hạng B2",
-    description: "Ô tô số sàn, được kinh doanh vận tải (taxi, grab, giao hàng…)",
-    color: "text-green-600",
-    bg: "bg-green-50",
-    border: "border-green-200"
+    description: "Ô tô số sàn, kinh doanh vận tải (taxi, giao hàng…)",
+    color: "text-blue-600",
+    bg: "bg-blue-50",
+    border: "border-blue-200",
+    stats: "35 câu / 22 phút",
+    colSpan: "md:col-span-3"
   },
   {
     code: "C",
     name: "Hạng C",
-    description: "Ô tô tải và ô tô chuyên dùng (trên 3,5 tấn)",
+    description: "Ô tô tải và chuyên dùng (trên 3,5 tấn)",
     color: "text-orange-500",
     bg: "bg-orange-50",
-    border: "border-orange-200"
+    border: "border-orange-200",
+    stats: "40 câu / 24 phút",
+    colSpan: "md:col-span-2"
   },
   {
     code: "D",
@@ -36,15 +42,19 @@ const LICENSE_TYPES = [
     description: "Ô tô chở người từ 10–30 chỗ",
     color: "text-purple-500",
     bg: "bg-purple-50",
-    border: "border-purple-200"
+    border: "border-purple-200",
+    stats: "45 câu / 26 phút",
+    colSpan: "md:col-span-2"
   },
   {
     code: "E",
     name: "Hạng E",
     description: "Ô tô chở người trên 30 chỗ",
-    color: "text-purple-600",
-    bg: "bg-purple-50",
-    border: "border-purple-200"
+    color: "text-rose-500",
+    bg: "bg-rose-50",
+    border: "border-rose-200",
+    stats: "45 câu / 26 phút",
+    colSpan: "md:col-span-2"
   }
 ];
 
@@ -219,20 +229,27 @@ export const ThiPage: React.FC<ThiPageProps> = ({ isAuthenticated, onShowAuth, o
     return <Truck size={32} />; // D, E dùng chung icon xe lớn
   };
 
-  // 1. Màn hình chi tiết bài thi (Placeholder)
+  // 1. Màn hình chi tiết bài thi (Dashboard Layout)
   if (selectedExam) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 via-white to-blue-50 animate-fade-in relative min-h-[600px] p-4">
-        <button 
-          onClick={() => setSelectedExam(null)}
-          className="absolute top-8 left-8 flex items-center gap-2 text-blue-600 hover:bg-blue-50 px-4 py-2 rounded-lg transition-all hover:shadow-md border border-blue-100 z-20"
-        >
-          <ArrowLeft size={20} />
-          <span className="font-medium">Quay lại danh sách đề</span>
-        </button>
+      <div className="flex-1 flex flex-col bg-white animate-fade-in relative min-h-screen">
+        {/* Main Header / Topbar */}
+        <div className="flex items-center justify-between px-6 py-4 bg-blue-600 border-b border-blue-700 z-20">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => setSelectedExam(null)}
+              className="flex items-center gap-2 text-blue-100 hover:text-white bg-blue-700 hover:bg-blue-800 px-4 py-2 rounded-lg transition-all"
+            >
+              <ArrowLeft size={18} />
+              <span className="font-medium">Thoát</span>
+            </button>
+            <h1 className="text-xl font-bold text-white hidden md:block">{selectedExam.title}</h1>
+          </div>
+          <div className="text-blue-100 text-sm">{selectedExam.topic}</div>
+        </div>
         
-        {/* Quiz Interface Replaces Previous Start Screen */}
-            <div className="w-full h-full flex items-center justify-center pt-16">
+        {/* Quiz Interface */}
+        <div className="flex-1 flex w-full">
           <QuizGame 
             examTitle={selectedExam.title} 
             questions={examQuestions}
@@ -247,8 +264,8 @@ export const ThiPage: React.FC<ThiPageProps> = ({ isAuthenticated, onShowAuth, o
 
   // 2. Màn hình chính (Trang chủ Thi Sát Hạch)
   return (
-  <div className="w-full h-full bg-gradient-to-b from-transparent via-blue-50/30 to-transparent animate-fade-in overflow-auto">
-      <div className="max-w-7xl mx-auto px-6 py-10">
+  <div className="w-full h-full flex flex-col bg-blue-900/40 backdrop-blur-md animate-fade-in overflow-auto">
+      <div className="flex-1 max-w-7xl mx-auto px-6 py-10 w-full mb-10">
         
         {/* Phần 1: Chọn Văn Bằng */}
         <div>
@@ -259,32 +276,44 @@ export const ThiPage: React.FC<ThiPageProps> = ({ isAuthenticated, onShowAuth, o
             </p>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-6">
             {LICENSE_TYPES.map((license) => (
               <button 
                 key={license.code}
                 onClick={() => handleStartExamByLicense(license)}
                 className={`
-                  bg-white p-6 rounded-xl border-2 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg text-left group
-                  ${license.border} hover:border-current
+                  bg-white p-6 md:p-8 rounded-2xl border-2 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl text-left group
+                  ${license.border} hover:border-current flex flex-col justify-between block w-full
+                  ${license.colSpan}
                 `}
               >
-                <div className="flex items-center justify-between mb-4">
-                  <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${license.bg} ${license.color}`}>
-                    {getLicenseIcon(license.code)}
+                <div>
+                  <div className="flex items-start justify-between mb-5">
+                    <div className={`w-14 h-14 rounded-xl flex items-center justify-center ${license.bg} ${license.color} transform group-hover:scale-110 transition-transform duration-300 shadow-sm`}>
+                      {getLicenseIcon(license.code)}
+                    </div>
+                    <div className="flex flex-col items-end gap-2">
+                       <span className={`px-3 py-1 rounded-md text-sm font-bold ${license.bg} ${license.color}`}>
+                        {license.code}
+                      </span>
+                      <span className="text-xs font-semibold text-gray-500 bg-gray-100 px-2 py-1 rounded-md whitespace-nowrap">
+                        {license.stats}
+                      </span>
+                    </div>
                   </div>
-                  <span className={`px-3 py-1.5 rounded text-sm font-bold ${license.bg} ${license.color}`}>
-                    {license.code}
-                  </span>
+                  
+                  <h3 className={`text-2xl font-bold group-hover:text-current text-gray-900 mb-2`}>
+                    {license.name}
+                  </h3>
+                  
+                  <p className="text-gray-500 text-sm md:text-base line-clamp-2 min-h-[2.5rem]">
+                    {license.description}
+                  </p>
                 </div>
                 
-                <h3 className={`text-xl font-bold group-hover:text-current text-gray-800`}>
-                  {license.name}
-                </h3>
-                
-                <div className="flex items-center text-sm font-medium text-gray-500 group-hover:text-current transition-colors mt-4">
+                <div className="flex items-center text-sm font-bold text-gray-400 group-hover:text-current transition-colors mt-6 pt-4 border-t border-gray-100 w-full">
                   <span>Vào thi ngay</span>
-                  <ArrowLeft className="w-4 h-4 ml-2 rotate-180 transition-transform group-hover:translate-x-1" />
+                  <ArrowLeft className="w-5 h-5 ml-2 rotate-180 transition-transform group-hover:translate-x-2" />
                 </div>
               </button>
             ))}
@@ -360,24 +389,20 @@ export const ThiPage: React.FC<ThiPageProps> = ({ isAuthenticated, onShowAuth, o
           </button>
         </div>
 
-        {/* Tips / Info Banner */}
-        <div className="mt-16 bg-yellow-50 border border-yellow-200 rounded-xl p-6 flex flex-col md:flex-row items-center gap-6">
-          <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center flex-shrink-0 text-yellow-600">
-            <AlertCircle size={24} />
-          </div>
-          <div className="flex-1 text-center md:text-left">
-            <h4 className="font-bold text-yellow-800 text-lg mb-1">Lưu ý quan trọng</h4>
-            <p className="text-yellow-700 text-sm">
-              Cấu trúc đề thi và thời gian làm bài sẽ thay đổi tùy theo hạng bằng bạn chọn. 
-              Hãy chắc chắn chọn đúng hạng bằng để có kết quả đánh giá chính xác nhất.
-            </p>
-          </div>
-          <button className="px-6 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg font-medium transition-colors shadow-sm">
-            Xem quy định thi
-          </button>
-        </div>
+        {/* Tips / Info Banner removed per request */}
 
       </div>
+
+      {/* Small footer with basic info (copied from HomePage) */}
+      <footer className="bg-white border-t">
+        <div className="container mx-auto px-8 py-4">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-2 text-sm text-gray-700">
+            <div className="font-bold text-gray-900">GROUP 3 .NET TECH</div>
+            <div>Hotline: <a href="tel:333-88-222-55" className="text-blue-600 hover:underline">333-88-222-55</a></div>
+            <div className="text-gray-500">© {new Date().getFullYear()} Nhóm 3. All rights reserved.</div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };
