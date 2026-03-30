@@ -9,6 +9,8 @@ import { ProfilePage } from '@/app/components/ProfilePage';
 import { HistoryPage } from '@/app/components/HistoryPage';
 import { ThiPage } from '@/app/components/ThiPage';
 import { ReviewPage } from '@/app/components/ReviewPage';
+import { ConsultationUserPage } from '@/app/components/ConsultationUserPage';
+import { ConsultationAdminPage } from '@/app/components/ConsultationAdminPage';
 import { HomePage } from '@/app/components/HomePage';
 import { IntroPage } from '@/app/components/IntroPage';
 import { PrivacyPolicyPage } from '@/app/components/PrivacyPolicyPage';
@@ -19,13 +21,14 @@ import { Question } from '@/app/types';
 import { Chapter, CHAPTERS } from '@/app/types'; // Ensure Chapter and CHAPTERS are imported
 
 // Định nghĩa các trang chính
-type PageKey = 'HOME' | 'INTRO' | 'THI' | 'REVIEW' | 'DOCS' | 'PROFILE' | 'HISTORY' | 'PRIVACY' | 'CONTACT' | 'ADMIN';
+type PageKey = 'HOME' | 'INTRO' | 'THI' | 'REVIEW' | 'CONSULTATION' | 'DOCS' | 'PROFILE' | 'HISTORY' | 'PRIVACY' | 'CONTACT' | 'ADMIN';
 
 const PAGES: Record<PageKey, string> = {
   HOME: 'Trang Chủ',
   INTRO: 'Giới thiệu',
   THI: 'Thi Sát Hạch',
   REVIEW: 'Ôn Tập',
+  CONSULTATION: 'Trao Đổi Trực Tiếp',
   DOCS: 'Tài liệu',
   PROFILE: 'Hồ sơ',
   HISTORY: 'Lịch sử',
@@ -37,6 +40,7 @@ const PAGES: Record<PageKey, string> = {
 const App = () => {
   // State quản lý đăng nhập
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userRole, setUserRole] = useState<'USER' | 'ADMIN' | null>(null);
   const [showAuthPage, setShowAuthPage] = useState(false);
   const [userData, setUserData] = useState<{ name: string; email: string }>({
     name: 'Khách',
@@ -53,6 +57,7 @@ const App = () => {
         if (path.startsWith('/docs')) return 'DOCS';
         if (path.startsWith('/thi')) return 'THI';
         if (path.startsWith('/review')) return 'REVIEW';
+        if (path.startsWith('/consultation')) return 'CONSULTATION';
         if (path.startsWith('/profile')) return 'PROFILE';
         if (path.startsWith('/history')) return 'HISTORY';
         if (path.startsWith('/privacy')) return 'PRIVACY';
@@ -82,7 +87,16 @@ const App = () => {
       return [];
     }
   });
+  //Load lại vẫn giữ login
+  useEffect(() => {
+    const token = localStorage.getItem('accessToken');
+    const role = localStorage.getItem('userRole');
 
+    if (token && role) {
+      setIsAuthenticated(true);
+      setUserRole(role as 'USER' | 'ADMIN');
+    }
+  }, []);
   // Persist questions to localStorage whenever they change
   useEffect(() => {
     try {
@@ -277,7 +291,7 @@ const App = () => {
     try {
       if (typeof window !== 'undefined') {
         const pathMap: Record<PageKey, string> = {
-          HOME: '/', INTRO: '/intro', THI: '/thi', REVIEW: '/review', DOCS: '/docs', PROFILE: '/profile', HISTORY: '/history', PRIVACY: '/privacy', CONTACT: '/contact', ADMIN: '/admin'
+          HOME: '/', INTRO: '/intro', THI: '/thi', REVIEW: '/review',CONSULTATION: '/consultation', DOCS: '/docs', PROFILE: '/profile', HISTORY: '/history', PRIVACY: '/privacy', CONTACT: '/contact', ADMIN: '/admin'
         };
         const newPath = pathMap[page] || '/';
         window.history.replaceState(null, '', newPath);
@@ -296,11 +310,12 @@ const App = () => {
   }, [currentPage]);
 
   // Hàm xử lý đăng nhập
-  const handleLogin = (user: { name: string; email: string }) => {
-    setIsAuthenticated(true);
-    setUserData(user);
-    setShowAuthPage(false);
-  };
+const handleLogin = (user: { name: string; email: string; role: 'USER' | 'ADMIN' }) => {
+  setIsAuthenticated(true);
+  setUserData(user);
+  setUserRole(user.role);
+  setShowAuthPage(false);
+};
 
   // Hàm hiển thị trang đăng nhập
   const handleShowAuthPage = () => {
@@ -309,10 +324,12 @@ const App = () => {
 
   // Hàm đăng xuất
   const handleLogout = () => {
-    setIsAuthenticated(false);
-    setUserData({ name: 'Khách', email: '' });
-    setCurrentPage('HOME');
-  };
+  setIsAuthenticated(false);
+  setUserRole(null);
+  localStorage.removeItem('accessToken');
+  setUserData({ name: 'Khách', email: '' });
+  setCurrentPage('HOME');
+};
 
   // Nếu chưa đăng nhập và đang hiển thị trang Auth
   if (!isAuthenticated && showAuthPage) {
@@ -367,6 +384,20 @@ const App = () => {
         );
       case 'REVIEW':
         return <ReviewPage questions={questions} />;
+      case 'CONSULTATION':
+        if (!isAuthenticated) {
+          return (
+            <div className="flex items-center justify-center h-full">
+              <button onClick={handleShowAuthPage}>
+                Vui lòng đăng nhập
+              </button>
+            </div>
+          );
+        }
+        if (userRole === 'ADMIN') {
+          return <ConsultationAdminPage />;
+        }
+        return <ConsultationUserPage />;
       case 'PROFILE':
         if (isAuthenticated) {
           return (
@@ -472,7 +503,12 @@ const App = () => {
               icon={<Book size={20} />}
               label={PAGES.REVIEW}
             />
-            
+            <NavButton 
+              active={currentPage === 'CONSULTATION'} 
+              onClick={() => handlePageChange('CONSULTATION')}
+              icon={<Mail size={20} />}
+              label={PAGES.CONSULTATION}
+            />
             <NavButton 
               active={currentPage === 'DOCS'} 
               onClick={() => handlePageChange('DOCS')}

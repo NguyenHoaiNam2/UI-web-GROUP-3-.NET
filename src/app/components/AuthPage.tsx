@@ -3,7 +3,11 @@ import { LogIn, UserPlus, Mail, Lock, User, Eye, EyeOff, ArrowRight, AlertCircle
 import logoImage from '@/assets/logo.svg';
 
 interface AuthPageProps {
-  onLogin: (userData: { name: string; email: string }) => void;
+  onLogin: (userData: { 
+    name: string; 
+    email: string; 
+    role: 'USER' | 'ADMIN' 
+  }) => void;
   onNavigateToPrivacy?: () => void;
   onBack?: () => void;
 }
@@ -48,11 +52,12 @@ export const AuthPage = ({ onLogin, onNavigateToPrivacy, onBack }: AuthPageProps
         
         if (data.accessToken) {
           // Lưu token vào localStorage
-          localStorage.setItem('accessToken', data.accessToken);
+          localStorage.setItem('userRole', data.role === 1 ? 'ADMIN' : 'USER');
           
           onLogin({
-            name: 'Người dùng', // Bạn có thể decode token để lấy tên nếu cần
-            email: formData.email
+            name: data.name,
+            email: formData.email,
+            role: data.role === 1 ? 'ADMIN' : 'USER'
           });
         } else {
           throw new Error('Không nhận được token từ server');
@@ -80,11 +85,6 @@ export const AuthPage = ({ onLogin, onNavigateToPrivacy, onBack }: AuthPageProps
         }
 
         // Đăng ký thành công, bạn có thể tự động gọi đăng nhập hoặc hiển thị thông báo
-        // Ở đây giả lập đăng nhập luôn
-        onLogin({
-          name: formData.name, 
-          email: formData.email
-        });
       }
     } catch (err: any) {
       setError(err.message || 'Đã có lỗi xảy ra');
