@@ -22,15 +22,54 @@ export const AuthPage = ({ onLogin, onNavigateToPrivacy }: AuthPageProps) => {
     confirmPassword: ''
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    
-    // Giả lập đăng nhập thường
-    onLogin({
-      name: isLogin ? 'Người dùng' : formData.name, 
-      email: formData.email
-    });
+    setIsLoading(true);
+
+    try {
+      if (isLogin) {
+        // Đăng nhập qua API
+        const response = await fetch('https://localhost:52207/auth/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            username: formData.name,
+            password: formData.password
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error('Đăng nhập thất bại. Kiểm tra lại thông tin.');
+        }
+
+        const data = await response.json();
+        
+        if (data.accessToken) {
+          // Lưu token vào localStorage
+          localStorage.setItem('accessToken', data.accessToken);
+          
+          onLogin({
+            name: 'Người dùng', // Bạn có thể decode token để lấy tên nếu cần
+            email: formData.email
+          });
+        } else {
+          throw new Error('Không nhận được token từ server');
+        }
+      } else {
+        // Xử lý đăng ký nếu cần
+        onLogin({
+          name: formData.name, 
+          email: formData.email
+        });
+      }
+    } catch (err: any) {
+      setError(err.message || 'Đã có lỗi xảy ra');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleGoogleLogin = async () => {
@@ -130,45 +169,45 @@ export const AuthPage = ({ onLogin, onNavigateToPrivacy }: AuthPageProps) => {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Họ tên - chỉ hiện khi đăng ký */}
+            {/* Tên đăng nhập */}
+            <div className="animate-fade-in">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {isLogin ? 'Tên đăng nhập' : 'Tên tài khoản (Username)'}
+              </label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                <input
+                  type="text"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  placeholder={isLogin ? 'Nhập tên đăng nhập' : 'Nhập tên tài khoản để đăng ký'}
+                  className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Email - chỉ hiện khi đăng ký */}
             {!isLogin && (
               <div className="animate-fade-in">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Họ và tên
+                  Email
                 </label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                   <input
-                    type="text"
-                    name="name"
-                    value={formData.name}
+                    type="email"
+                    name="email"
+                    value={formData.email}
                     onChange={handleInputChange}
-                    placeholder="Nhập họ và tên của bạn"
+                    placeholder="example@email.com"
                     className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                     required={!isLogin}
                   />
                 </div>
               </div>
             )}
-
-            {/* Email */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Email
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  placeholder="example@email.com"
-                  className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  required
-                />
-              </div>
-            </div>
 
             {/* Mật khẩu */}
             <div>
