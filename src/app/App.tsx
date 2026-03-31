@@ -20,6 +20,9 @@ import { DocumentsPage } from '@/app/components/DocumentsPage';
 import { Question } from '@/app/types';
 import { Chapter, CHAPTERS } from '@/app/types'; // Ensure Chapter and CHAPTERS are imported
 
+
+
+
 // Định nghĩa các trang chính
 type PageKey = 'HOME' | 'INTRO' | 'THI' | 'REVIEW' | 'CONSULTATION' | 'DOCS' | 'PROFILE' | 'HISTORY' | 'PRIVACY' | 'CONTACT' | 'ADMIN';
 
@@ -38,6 +41,10 @@ const PAGES: Record<PageKey, string> = {
 };
 
 const App = () => {
+  //test
+  const [showCall, setShowCall] = useState(false);
+
+
   // State quản lý đăng nhập
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState<'USER' | 'ADMIN' | null>(null);
@@ -423,13 +430,14 @@ const App = () => {
         return <ReviewPage questions={questions} />;
       case 'CONSULTATION':
         if (!isAuthenticated) {
-          return (
-            <div className="flex items-center justify-center h-full">
-              <button onClick={handleShowAuthPage}>
-                Vui lòng đăng nhập để dùng chức năng này.
-              </button>
-            </div>
-          );
+          // return (
+          //   <div className="flex items-center justify-center h-full">
+          //     <button onClick={handleShowAuthPage}>
+          //       Vui lòng đăng nhập để dùng chức năng này.
+          //     </button>
+          //   </div>
+          // );
+          return <ConsultationUserPage />;
         }
         if (userRole === 'ADMIN') {
           return <ConsultationAdminPage />;

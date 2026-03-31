@@ -79,7 +79,7 @@ const VideoCallLayout: React.FC<Props> = ({ onEndCall }) => {
             {/* SIDEBAR */}
             <div className="sidebar">
                 <div className="chat-box">
-                    <div className="title">Chat Box</div>
+                    <div className="title">Khung Trò Chuyện</div>
                     <div className="messages">
                         {messages.map((msg, idx) => (
                             <div
@@ -96,7 +96,7 @@ const VideoCallLayout: React.FC<Props> = ({ onEndCall }) => {
                             value={inputText}
                             onChange={(e) => setInputText(e.target.value)}
                             onKeyDown={handleKeyPress}
-                            placeholder="Type a message..."
+                            placeholder="Nhập tin nhắn..."
                         />
                         <button onClick={sendMessage} className="send-btn">
                             <svg
@@ -114,18 +114,18 @@ const VideoCallLayout: React.FC<Props> = ({ onEndCall }) => {
 
                 <div className="voice-box">
                     <div className="voice-item">
-                        <span>Voice Other</span>
+                        <span>Voice của họ</span>
                         <div className={`wave ${otherSpeaking ? "active" : ""}`} />
                     </div>
 
                     <div className="voice-item">
-                        <span>Voice User</span>
+                        <span>Voice của bạn</span>
                         <div className={`wave ${userSpeaking ? "active" : ""}`} />
                     </div>
                 </div>
 
                 <div className="cam-user">
-                    <div className="title">Cam user</div>
+                    <div className="title">Màn hình</div>
                 </div>
             </div>
         </div>
