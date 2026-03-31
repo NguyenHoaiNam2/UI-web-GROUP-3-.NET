@@ -95,8 +95,30 @@ body {
     position: absolute;
     top: 5px;
     left: 10px;
+    right: 10px; /* thêm để nút không chạm viền ngoài */
+    display: flex;
+    align-items: center;
 }
 
+.auto-scroll-btn {
+    margin-left: auto;       /* đẩy nút về bên phải */
+    padding: 2px 6px;
+    font-size: 12px;
+    border: 1px solid #888;
+    border-radius: 4px;
+    background-color: #eee;
+    cursor: pointer;
+}
+
+.auto-scroll-btn.on {
+    background-color: #4caf50;
+    color: white;
+}
+
+.auto-scroll-btn.off {
+    background-color: #f00000;
+    color: white;
+}
 
 /* Messages container */
 .chat-box .messages {
@@ -252,3 +274,5 @@ body {
         flex: 1;
     }
 }
+
+

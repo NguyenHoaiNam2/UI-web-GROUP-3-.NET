@@ -1,16 +1,21 @@
-import React, { useState, KeyboardEvent } from "react";
+import React, { useState, useRef, useEffect, KeyboardEvent } from "react";
 import "../../styles/VideoCallLayout.css";
-
-interface Props {
-    onEndCall: () => void;
-}
 
 interface Message {
     text: string;
     fromUser: boolean; // true = user, false = API/other
 }
 
-const VideoCallLayout: React.FC<Props> = ({ onEndCall }) => {
+interface Props {
+    onEndCall: () => void;
+    onMinimize: () => void; // thêm prop
+}
+
+const VideoCallLayout: React.FC<Props> = ({ onEndCall, onMinimize }) => {
+
+    const [autoScroll, setAutoScroll] = useState(true); // chế độ auto-scroll
+    const messagesEndRef = useRef<HTMLDivElement | null>(null);
+
     const [isMicOn, setIsMicOn] = useState(true);
     const [isCamOn, setIsCamOn] = useState(true);
     const [isSharing, setIsSharing] = useState(false);
@@ -42,6 +47,12 @@ const VideoCallLayout: React.FC<Props> = ({ onEndCall }) => {
         if (e.key === "Enter") sendMessage();
     };
 
+    useEffect(() => {
+        if (autoScroll) {
+            messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        }
+    }, [messages, autoScroll]);
+
     return (
         <div className="call-container">
             {/* MAIN */}
@@ -69,7 +80,9 @@ const VideoCallLayout: React.FC<Props> = ({ onEndCall }) => {
                     >
                         Test Voice
                     </button>
-
+                    <button onClick={onMinimize}>
+                        🔽 Thu nhỏ
+                    </button>
                     <button className="end-call" onClick={onEndCall}>
                         End Call
                     </button>
@@ -79,7 +92,14 @@ const VideoCallLayout: React.FC<Props> = ({ onEndCall }) => {
             {/* SIDEBAR */}
             <div className="sidebar">
                 <div className="chat-box">
-                    <div className="title">Khung Trò Chuyện</div>
+                    <div className="title">Khung Trò Chuyện
+                        <button
+                            className={`auto-scroll-btn ${autoScroll ? "on" : "off"}`}
+                            onClick={() => setAutoScroll(!autoScroll)}
+                        >
+                            {autoScroll ? "Auto" : "Auto"}
+                        </button>
+                    </div>
                     <div className="messages">
                         {messages.map((msg, idx) => (
                             <div
@@ -89,6 +109,7 @@ const VideoCallLayout: React.FC<Props> = ({ onEndCall }) => {
                                 {msg.text}
                             </div>
                         ))}
+                        <div ref={messagesEndRef} />
                     </div>
                     <div className="chat-input">
                         <input

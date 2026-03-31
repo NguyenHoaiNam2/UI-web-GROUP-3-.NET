@@ -1,12 +1,12 @@
-import React, { useState } from "react";
-import CallPopup from "./CallPopup";
 
-export const ConsultationUserPage: React.FC = () => {
-  const [showCall, setShowCall] = useState(false);
 
+interface ConsultationUserPageProps {
+  setShowCall: (v: boolean) => void;
+}
+
+export const ConsultationUserPage: React.FC<ConsultationUserPageProps> = ({ setShowCall }) => {
   return (
-    <div className="flex-1 flex flex-col items-center justify-center gap-4">
-      
+    <div className="flex-1 flex flex-col items-center justify-center">
       <div className="text-xl font-semibold text-blue-600">
         Đây là trang Thảo luận dành cho User
       </div>
@@ -17,10 +17,6 @@ export const ConsultationUserPage: React.FC = () => {
       >
         📞 Start Call
       </button>
-
-      {showCall && (
-        <CallPopup onClose={() => setShowCall(false)} />
-      )}
     </div>
   );
 };

@@ -20,7 +20,7 @@ import { DocumentsPage } from '@/app/components/DocumentsPage';
 import { Question } from '@/app/types';
 import { Chapter, CHAPTERS } from '@/app/types'; // Ensure Chapter and CHAPTERS are imported
 
-
+import CallPopup from "./components/CallPopup";
 
 
 // Định nghĩa các trang chính
@@ -41,10 +41,10 @@ const PAGES: Record<PageKey, string> = {
 };
 
 const App = () => {
-  //test
+
+  //Quản lý popup video call
   const [showCall, setShowCall] = useState(false);
-
-
+  const [isMinimized, setIsMinimized] = useState(false);
   // State quản lý đăng nhập
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState<'USER' | 'ADMIN' | null>(null);
@@ -53,7 +53,7 @@ const App = () => {
     name: 'Khách',
     email: ''
   });
-  
+
   const [currentPage, setCurrentPage] = useState<PageKey>(() => {
     try {
       if (typeof window !== 'undefined') {
@@ -72,7 +72,7 @@ const App = () => {
 
         // Fall back to saved page in localStorage
         const saved = window.localStorage.getItem('currentPage') as PageKey | null;
-        const validKeys: PageKey[] = ['HOME','INTRO','THI','REVIEW','DOCS','PROFILE','HISTORY','PRIVACY','CONTACT','ADMIN'];
+        const validKeys: PageKey[] = ['HOME', 'INTRO', 'THI', 'REVIEW', 'DOCS', 'PROFILE', 'HISTORY', 'PRIVACY', 'CONTACT', 'ADMIN'];
         if (saved && validKeys.includes(saved)) return saved;
       }
     } catch (err) {
@@ -120,7 +120,7 @@ const App = () => {
                 try {
                   if (storedName) localStorage.setItem('userName', storedName);
                   if (storedEmail) localStorage.setItem('userEmail', storedEmail);
-                } catch (e) {}
+                } catch (e) { }
               }
             } catch (e) {
               // ignore fetch errors
@@ -174,7 +174,7 @@ const App = () => {
   useEffect(() => {
     try {
       if (typeof window !== 'undefined') window.localStorage.setItem('chapters', JSON.stringify(chapters));
-    } catch {}
+    } catch { }
   }, [chapters]);
 
   // Fetch questions from the new API and merge them into local state.
@@ -194,12 +194,12 @@ const App = () => {
           // Extract the array from the paginated response object (rawData.questions)
           dataQ = Array.isArray(rawData) ? rawData : (rawData.questions || rawData.data || rawData.items || []);
         } else {
-            console.error('API Error Response:', res.status, res.statusText);
+          console.error('API Error Response:', res.status, res.statusText);
         }
 
         if (!Array.isArray(dataQ) || dataQ.length === 0) {
-            console.warn('No questions found or data is not an array.');
-            return;
+          console.warn('No questions found or data is not an array.');
+          return;
         }
 
         console.log('Mapping', dataQ.length, 'questions...');
@@ -213,7 +213,7 @@ const App = () => {
 
           let chapterId = 1;
           if (Array.isArray(q.categories) && q.categories.length > 0) {
-             chapterId = Number(q.categories[0]);
+            chapterId = Number(q.categories[0]);
           }
 
           return {
@@ -232,7 +232,7 @@ const App = () => {
           const byId = new Map(prev.map(p => [p.id, p]));
           for (const mq of mapped) byId.set(mq.id, mq);
           const merged = Array.from(byId.values());
-          try { window.localStorage.setItem('questions', JSON.stringify(merged)); } catch {}
+          try { window.localStorage.setItem('questions', JSON.stringify(merged)); } catch { }
           return merged;
         });
       } catch (err) {
@@ -304,7 +304,7 @@ const App = () => {
     return () => {
       window.removeEventListener('storage', onStorage);
       if (bc) {
-        try { bc.close(); } catch (_) {}
+        try { bc.close(); } catch (_) { }
       }
     };
     // We intentionally depend on `questions` so listeners can compare against latest via closure
@@ -323,7 +323,7 @@ const App = () => {
     try {
       if (typeof window !== 'undefined') {
         const pathMap: Record<PageKey, string> = {
-          HOME: '/', INTRO: '/intro', THI: '/thi', REVIEW: '/review',CONSULTATION: '/consultation', DOCS: '/docs', PROFILE: '/profile', HISTORY: '/history', PRIVACY: '/privacy', CONTACT: '/contact', ADMIN: '/admin'
+          HOME: '/', INTRO: '/intro', THI: '/thi', REVIEW: '/review', CONSULTATION: '/consultation', DOCS: '/docs', PROFILE: '/profile', HISTORY: '/history', PRIVACY: '/privacy', CONTACT: '/contact', ADMIN: '/admin'
         };
         const newPath = pathMap[page] || '/';
         window.history.replaceState(null, '', newPath);
@@ -338,7 +338,7 @@ const App = () => {
   useEffect(() => {
     try {
       if (typeof window !== 'undefined') window.localStorage.setItem('currentPage', currentPage);
-    } catch {}
+    } catch { }
   }, [currentPage]);
 
   // Hàm xử lý đăng nhập
@@ -351,7 +351,7 @@ const App = () => {
       localStorage.setItem('userName', user.name);
       localStorage.setItem('userEmail', user.email);
       localStorage.setItem('userRole', user.role);
-    } catch (e) {}
+    } catch (e) { }
     setShowAuthPage(false);
   };
 
@@ -362,30 +362,30 @@ const App = () => {
 
   // Hàm đăng xuất
   const handleLogout = () => {
-  setIsAuthenticated(false);
-  setUserRole(null);
-  try {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('userName');
-    localStorage.removeItem('userEmail');
-    localStorage.removeItem('userRole');
-  } catch (e) {}
-  setUserData({ name: 'Khách', email: '' });
-  setCurrentPage('HOME');
-  setShowAuthPage(true);
-};
+    setIsAuthenticated(false);
+    setUserRole(null);
+    try {
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('userName');
+      localStorage.removeItem('userEmail');
+      localStorage.removeItem('userRole');
+    } catch (e) { }
+    setUserData({ name: 'Khách', email: '' });
+    setCurrentPage('HOME');
+    setShowAuthPage(true);
+  };
 
   // Nếu chưa đăng nhập và đang hiển thị trang Auth
   if (!isAuthenticated && showAuthPage) {
     return (
       <AnimatePresence mode="wait">
-        <motion.div 
-          initial={{ opacity: 0 }} 
-          animate={{ opacity: 1 }} 
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="w-full h-full"
         >
-          <AuthPage 
+          <AuthPage
             onLogin={handleLogin}
             onNavigateToPrivacy={() => {
               setShowAuthPage(false);
@@ -404,14 +404,14 @@ const App = () => {
     switch (currentPage) {
       case 'HOME':
         return (
-          <HomePage 
-            onNavigateToThi={() => handlePageChange('THI')} 
+          <HomePage
+            onNavigateToThi={() => handlePageChange('THI')}
             onNavigateToDocs={() => handlePageChange('DOCS')}
           />
         );
       case 'THI':
         return (
-          <ThiPage 
+          <ThiPage
             isAuthenticated={isAuthenticated}
             onShowAuth={handleShowAuthPage}
             onNavigateHistory={() => handlePageChange('HISTORY')}
@@ -437,27 +437,31 @@ const App = () => {
           //     </button>
           //   </div>
           // );
-          return <ConsultationUserPage />;
+          return <ConsultationUserPage setShowCall={setShowCall} />;
         }
         if (userRole === 'ADMIN') {
           return <ConsultationAdminPage />;
         }
-        return <ConsultationUserPage />;
+        return (
+          <ConsultationUserPage
+            setShowCall={setShowCall}   // chỉ cần mở popup
+          />
+        );
       case 'PROFILE':
         if (isAuthenticated) {
           return (
-            <ProfilePage 
+            <ProfilePage
               userName={userData.name}
               userEmail={userData.email}
               onBackToHome={() => handlePageChange('HOME')}
             />
           );
         }
-        return null; 
+        return null;
       case 'HISTORY':
         if (isAuthenticated) {
           return (
-            <HistoryPage 
+            <HistoryPage
               userName={userData.name}
               onBackToHome={() => handlePageChange('THI')}
             />
@@ -466,13 +470,13 @@ const App = () => {
         return null;
       case 'PRIVACY':
         return (
-          <PrivacyPolicyPage 
+          <PrivacyPolicyPage
             onBackToHome={() => handlePageChange('HOME')}
           />
         );
       case 'CONTACT':
         return (
-          <ContactPage 
+          <ContactPage
             onBackToHome={() => handlePageChange('HOME')}
           />
         );
@@ -483,12 +487,12 @@ const App = () => {
       default:
         return (
           <div className="flex-1 flex items-center justify-center bg-white min-h-[600px]">
-             <div className="text-center">
-                <h1 className="text-4xl font-bold text-blue-500 mb-4">
-                  {PAGES[currentPage]}
-                </h1>
-                <p className="text-gray-500">Nội dung đang được cập nhật...</p>
-             </div>
+            <div className="text-center">
+              <h1 className="text-4xl font-bold text-blue-500 mb-4">
+                {PAGES[currentPage]}
+              </h1>
+              <p className="text-gray-500">Nội dung đang được cập nhật...</p>
+            </div>
           </div>
         );
     }
@@ -498,64 +502,64 @@ const App = () => {
     <div
       className="min-h-screen w-full flex flex-col font-sans text-gray-800 overflow-x-hidden"
       style={{
-          backgroundImage: `url(${pageBackground})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center center',
-          backgroundRepeat: 'no-repeat',
-          backgroundAttachment: 'fixed',
-          backgroundColor: '#060066',
-        }}
+        backgroundImage: `url(${pageBackground})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center center',
+        backgroundRepeat: 'no-repeat',
+        backgroundAttachment: 'fixed',
+        backgroundColor: '#060066',
+      }}
     >
       {/* Navbar */}
       <nav className="w-full bg-blue-50 px-8 py-4 shadow-sm flex items-center justify-between sticky top-0 z-50 backdrop-blur-md bg-opacity-90">
-        <div 
+        <div
           className="flex items-center gap-4 cursor-pointer hover:opacity-80 transition-opacity"
           onClick={() => handlePageChange('HOME')}
         >
-           <img 
-             src={logoImage} 
-             alt="Group 3 .NET Tech" 
-             className="h-12 w-12 object-cover rounded-xl shadow-md border-2 border-white" 
-           />
-           <span className="font-extrabold text-xl tracking-tight bg-gradient-to-r from-blue-700 to-cyan-600 bg-clip-text text-transparent hidden sm:block">
-             GROUP 3 .NET TECH
-           </span>
+          <img
+            src={logoImage}
+            alt="Group 3 .NET Tech"
+            className="h-12 w-12 object-cover rounded-xl shadow-md border-2 border-white"
+          />
+          <span className="font-extrabold text-xl tracking-tight bg-gradient-to-r from-blue-700 to-cyan-600 bg-clip-text text-transparent hidden sm:block">
+            GROUP 3 .NET TECH
+          </span>
         </div>
 
         <div className="flex items-center gap-6">
           <div className="hidden lg:flex items-center gap-2">
-            <NavButton 
-              active={currentPage === 'HOME'} 
+            <NavButton
+              active={currentPage === 'HOME'}
               onClick={() => handlePageChange('HOME')}
               icon={<Home size={20} />}
               label={PAGES.HOME}
             />
-            <NavButton 
-              active={currentPage === 'INTRO'} 
+            <NavButton
+              active={currentPage === 'INTRO'}
               onClick={() => handlePageChange('INTRO')}
               icon={<Info size={20} />}
               label={PAGES.INTRO}
             />
-             <NavButton 
-              active={currentPage === 'THI'} 
+            <NavButton
+              active={currentPage === 'THI'}
               onClick={() => handlePageChange('THI')}
               icon={<CheckSquare size={20} />}
               label={PAGES.THI}
             />
-            <NavButton 
-              active={currentPage === 'REVIEW'} 
+            <NavButton
+              active={currentPage === 'REVIEW'}
               onClick={() => handlePageChange('REVIEW')}
               icon={<Book size={20} />}
               label={PAGES.REVIEW}
             />
-            <NavButton 
-              active={currentPage === 'CONSULTATION'} 
+            <NavButton
+              active={currentPage === 'CONSULTATION'}
               onClick={() => handlePageChange('CONSULTATION')}
               icon={<Mail size={20} />}
               label={PAGES.CONSULTATION}
             />
-            <NavButton 
-              active={currentPage === 'DOCS'} 
+            <NavButton
+              active={currentPage === 'DOCS'}
               onClick={() => handlePageChange('DOCS')}
               icon={<FileText size={20} />}
               label={PAGES.DOCS}
@@ -564,14 +568,14 @@ const App = () => {
 
           {/* Mobile Menu Button - simplified placeholder */}
           <div className="lg:hidden">
-             {/* You might want a mobile menu here later */}
+            {/* You might want a mobile menu here later */}
           </div>
 
           <div className="h-8 w-[1px] bg-blue-200 mx-2 hidden md:block"></div>
 
           <div className="flex items-center gap-3 cursor-pointer group relative">
             <div className="relative">
-              <img 
+              <img
                 src={userAvatar}
                 alt="User Avatar"
                 className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-md group-hover:border-blue-200 transition-colors"
@@ -589,15 +593,15 @@ const App = () => {
                     {userData.email && <p className="text-sm text-gray-500">{userData.email}</p>}
                   </div>
                   {/* Admin access removed from UI — use /admin path to access admin area */}
-                  <button 
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors shadow-sm" 
+                  <button
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors shadow-sm"
                     onClick={() => handlePageChange('PROFILE')}
                   >
                     <UserIcon size={18} />
                     <span>Xem Profile</span>
                   </button>
-                  <button 
-                    className="w-full bg-red-50 hover:bg-red-100 text-red-600 py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors" 
+                  <button
+                    className="w-full bg-red-50 hover:bg-red-100 text-red-600 py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors"
                     onClick={handleLogout}
                   >
                     <LogOut size={18} />
@@ -622,8 +626,8 @@ const App = () => {
         </div>
       </nav>
 
-  {/* Main Content with Transition */}
-  <main className="flex-1 flex flex-col relative w-full overflow-auto">
+      {/* Main Content with Transition */}
+      <main className="flex-1 flex flex-col relative w-full overflow-auto">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentPage + resetKey} // Change key to trigger animation
@@ -637,6 +641,14 @@ const App = () => {
           </motion.div>
         </AnimatePresence>
       </main>
+
+      {showCall && (
+        <CallPopup
+          onClose={() => setShowCall(false)}
+          isMinimized={isMinimized}
+          setIsMinimized={setIsMinimized}
+        />
+      )}
 
       {/* Footer removed - app uses full-height content */}
     </div>
@@ -656,8 +668,8 @@ const NavButton = ({ active, onClick, label, icon }: NavButtonProps) => {
       onClick={onClick}
       className={`
         flex items-center gap-2 px-4 py-2 rounded-full transition-all duration-300
-        ${active 
-          ? 'bg-blue-100 text-blue-600 font-semibold shadow-sm' 
+        ${active
+          ? 'bg-blue-100 text-blue-600 font-semibold shadow-sm'
           : 'text-gray-500 hover:text-blue-400 hover:bg-blue-50/50'
         }
       `}
