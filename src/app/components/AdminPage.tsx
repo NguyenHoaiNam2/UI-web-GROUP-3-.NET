@@ -156,22 +156,17 @@ export const AdminPage: React.FC<AdminPageProps> = ({ questions, setQuestions, c
   };
 
   const applyReviewMappingToQuestions = () => {
-    // For each review chapter, set chapterId on questions that match questionIds
-    setQuestions(prev => {
-      const next = prev.map(q => {
-        // try to derive numeric id from question.id which may be like 'api-123' or numeric string
-        const numericId = Number(String(q.id).replace(/^api-/, ''));
-        for (const rc of reviewChapters) {
-          if (Array.isArray(rc.questionIds) && rc.questionIds.includes(numericId)) {
-            return { ...q, chapterId: rc.id };
-          }
-        }
-        return q;
-      });
-      try { window.localStorage.setItem('questions', JSON.stringify(next)); } catch {}
-      toast.success('Áp dụng phân chương cho câu hỏi thành công');
-      return next;
+    // Trích xuất các ID câu hỏi từ ngân hàng câu hỏi vào các chương ôn tập dựa theo chapterId của câu hỏi
+    const updatedRc = reviewChapters.map(rc => {
+      const matchedQs = questions.filter(q => q.chapterId === rc.id);
+      const qIds = matchedQs.map(q => {
+        if (typeof q.id === 'string' && q.id.startsWith('api-')) return Number(q.id.replace('api-', ''));
+        return Number(q.id);
+      }).filter(n => !isNaN(n));
+      return { ...rc, questionIds: qIds };
     });
+    saveReviewChapters(updatedRc);
+    toast.success('Đã đồng bộ số lượng câu hỏi vào các chương Ôn Tập!');
   };
 
   const saveDocs = (docs: Doc[]) => {
@@ -210,30 +205,39 @@ export const AdminPage: React.FC<AdminPageProps> = ({ questions, setQuestions, c
       toast.info('Đang tải dữ liệu từ máy chủ...');
       let allData: any[] = [];
       
-      const res1 = await fetch('https://localhost:52207/api/CauHoi?SoLuong=60&trang=1');
-      if (!res1.ok) throw new Error(`HTTP ${res1.status}`);
-      const rawData1 = await res1.json();
-      
-      if (rawData1.questions && Array.isArray(rawData1.questions)) {
-        allData = allData.concat(rawData1.questions);
-      } else {
-        const data = Array.isArray(rawData1) ? rawData1 : (rawData1.data || rawData1.items || []);
-        allData = allData.concat(data);
-      }
-      
-      const totalPages = rawData1.totalPages || 1;
-      
-      for (let i = 2; i <= totalPages; i++) {
+      // Fetch questions for each of the 7 chapters (1 to 7)
+      for (let chapterNum = 1; chapterNum <= 7; chapterNum++) {
         try {
-          const r = await fetch(`https://localhost:52207/api/CauHoi?SoLuong=60&trang=${i}`);
-          if (r.ok) {
-            const pageData = await r.json();
-            if (pageData.questions && Array.isArray(pageData.questions)) {
-              allData = allData.concat(pageData.questions);
+          const res1 = await fetch(`https://localhost:52207/api/CauHoi?Chuong=${chapterNum}&SoLuong=60&trang=1`);
+          if (res1.ok) {
+            const rawData1 = await res1.json();
+            const totalPages = rawData1.totalPages || 1;
+            
+            // Get first page questions
+            if (rawData1.questions && Array.isArray(rawData1.questions)) {
+              allData = allData.concat(rawData1.questions.map((q: any) => ({ ...q, explicitChapterId: chapterNum })));
+            } else {
+              const data = Array.isArray(rawData1) ? rawData1 : (rawData1.data || rawData1.items || []);
+              allData = allData.concat(data.map((q: any) => ({ ...q, explicitChapterId: chapterNum })));
+            }
+            
+            // Fetch remaining pages for this chapter
+            for (let i = 2; i <= totalPages; i++) {
+              try {
+                const r = await fetch(`https://localhost:52207/api/CauHoi?Chuong=${chapterNum}&SoLuong=60&trang=${i}`);
+                if (r.ok) {
+                  const pageData = await r.json();
+                  if (pageData.questions && Array.isArray(pageData.questions)) {
+                     allData = allData.concat(pageData.questions.map((q: any) => ({ ...q, explicitChapterId: chapterNum })));
+                  }
+                }
+              } catch (e) {
+                console.warn(`Failed to fetch chapter ${chapterNum} page ${i}`, e);
+              }
             }
           }
         } catch (e) {
-          console.warn(`Failed to fetch page ${i}`, e);
+          console.warn(`Failed to fetch chapter ${chapterNum}`, e);
         }
       }
 
@@ -247,8 +251,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({ questions, setQuestions, c
           if (idx !== -1) correctIndex = idx;
         }
 
-        let chapterId = 1;
-        if (Array.isArray(q.categories) && q.categories.length > 0) {
+        // Use the explicitChapterId set during fetch, fallback to categories, then 1 
+        let chapterId = q.explicitChapterId || 1;
+        if (!q.explicitChapterId && Array.isArray(q.categories) && q.categories.length > 0) {
            chapterId = Number(q.categories[0]);
         }
 
@@ -265,12 +270,26 @@ export const AdminPage: React.FC<AdminPageProps> = ({ questions, setQuestions, c
       });
 
       // Merge: keep existing local questions (by id) and add/update from API
+      let merged: Question[] = [];
       setQuestions(prev => {
         const byId = new Map(prev.map(p => [p.id, p]));
         for (const mq of mapped) byId.set(mq.id, mq);
-        const merged = Array.from(byId.values());
+        merged = Array.from(byId.values());
         try { window.localStorage.setItem('questions', JSON.stringify(merged)); } catch {}
         return merged;
+      });
+
+      setReviewChapters(prevRc => {
+        const updatedRc = prevRc.map(rc => {
+          const matchedQs = merged.filter(q => q.chapterId === rc.id);
+          const qIds = matchedQs.map(q => {
+            if (typeof q.id === 'string' && q.id.startsWith('api-')) return Number(q.id.replace('api-', ''));
+            return Number(q.id);
+          }).filter(n => !isNaN(n));
+          return { ...rc, questionIds: qIds };
+        });
+        try { window.localStorage.setItem('reviewChapters', JSON.stringify(updatedRc)); } catch {}
+        return updatedRc;
       });
       toast.success(`Đã tải ${mapped.length} câu hỏi từ server`);
     } catch (err) {
