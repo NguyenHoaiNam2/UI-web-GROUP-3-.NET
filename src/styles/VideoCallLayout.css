@@ -1,0 +1,238 @@
+/* RESET */
+* {
+    box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+    height: 100%;
+}
+
+body {
+    margin: 0;
+    overflow-x: hidden;
+}
+
+/* CONTAINER */
+.call-container {
+    height: 100%;
+    display: flex;
+    padding: 10px;
+    gap: 10px;
+    background: #eee;
+    overflow: hidden;
+    /* ✅ chặn tràn */
+}
+
+/* MAIN */
+.main {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    /* ✅ QUAN TRỌNG */
+    background: #ddd;
+    border: 3px solid black;
+    position: relative;
+}
+
+.main-label {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+}
+
+/* BUTTON */
+.controls {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.controls button {
+    padding: 10px 15px;
+    border: 2px solid black;
+    background: white;
+    cursor: pointer;
+}
+
+.controls button:hover {
+    background: #ccc;
+}
+
+.end-call {
+    background: red;
+    color: white;
+}
+
+/* SIDEBAR */
+.sidebar {
+    width: 250px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* CHAT */
+
+.chat-box {
+    flex: 2;
+    border: 3px solid black;
+    background: #ddd;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    padding-top: 30px; /* để title không đè */
+}
+.chat-box .title {
+    position: absolute;
+    top: 5px;
+    left: 10px;
+}
+
+
+/* Messages container */
+.chat-box .messages {
+    flex: 1;
+    padding: 5px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.chat-box .message {
+    max-width: 80%;
+    padding: 5px 10px;
+    border-radius: 10px;
+    background: #fff;
+}
+
+.chat-box .message.left {
+    align-self: flex-start;
+    background: #d05a5a;
+}
+
+.chat-box .message.right {
+    align-self: flex-end;
+    background: #4582a1;
+}
+
+/* Input */
+.chat-box .chat-input {
+    display: flex;
+    gap: 2px;
+    padding: 5px;
+    border-top: 2px solid black;
+}
+
+.chat-box .chat-input input {
+    flex: 1;
+    padding: 5px 10px;
+    border: 1px solid #999;
+    border-radius: 5px;
+}
+
+.chat-box .chat-input button {
+    padding: 5px 10px;
+    cursor: pointer;
+}
+/* VOICE */
+.voice-box {
+    flex: 1;
+    /* vẫn co giãn */
+    border: 3px solid black;
+    display: flex;
+    flex-direction: column;
+}
+
+.voice-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 5px;
+    border-top: 2px solid black;
+}
+
+.voice-item:first-child {
+    border-top: none;
+}
+
+/* WAVE */
+.wave {
+    height: 20px;
+    background: linear-gradient(to right, black 50%, transparent 50%);
+    background-size: 10px 100%;
+    margin-top: 5px;
+    opacity: 0.3;
+}
+
+.wave.active {
+    animation: waveMove 0.6s linear infinite;
+    opacity: 1;
+}
+
+@keyframes waveMove {
+    0% {
+        transform: scaleY(0.3);
+    }
+
+    25% {
+        transform: scaleY(1.5);
+    }
+
+    50% {
+        transform: scaleY(0.5);
+    }
+
+    75% {
+        transform: scaleY(1.2);
+    }
+
+    100% {
+        transform: scaleY(0.3);
+    }
+}
+
+/* CAM */
+.cam-user {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    /* ✅ vuông */
+    flex-shrink: 0;
+    /* ✅ không bị co */
+    border: 3px solid black;
+    background: #ddd;
+    position: relative;
+}
+
+.cam-user .title {
+    position: absolute;
+    top: 5px;
+    left: 10px;
+}
+
+/* ✅ RESPONSIVE (QUAN TRỌNG) */
+@media (max-width: 1024px) {
+    .call-container {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: 100%;
+        height: 250px;
+        flex-direction: row;
+    }
+
+    .chat-box,
+    .voice-box,
+    .cam-user {
+        flex: 1;
+    }
+}
