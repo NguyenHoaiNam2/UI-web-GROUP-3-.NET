@@ -56,7 +56,7 @@ export const AuthPage = ({ onLogin, onNavigateToPrivacy, onBack }: AuthPageProps
           localStorage.setItem('userRole', data.role === 1 ? 'ADMIN' : 'USER');
           
           onLogin({
-            name: data.name,
+            name: data.name || data.username || formData.name || 'Người dùng',
             email: data.email ?? formData.email,
             role: data.role === 1 ? 'ADMIN' : 'USER'
           });

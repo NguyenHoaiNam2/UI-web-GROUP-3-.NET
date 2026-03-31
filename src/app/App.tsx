@@ -95,6 +95,9 @@ const App = () => {
         const role = localStorage.getItem('userRole');
         let storedName = localStorage.getItem('userName');
         let storedEmail = localStorage.getItem('userEmail');
+        
+        if (storedName === 'undefined') storedName = null;
+        if (storedEmail === 'undefined') storedEmail = null;
 
         if (token && role) {
           setIsAuthenticated(true);
@@ -108,11 +111,11 @@ const App = () => {
               });
               if (res && res.ok) {
                 const profile = await res.json();
-                storedName = profile?.name ?? storedName;
+                storedName = profile?.name ?? profile?.username ?? storedName;
                 storedEmail = profile?.email ?? storedEmail;
                 try {
-                  if (storedName) localStorage.setItem('userName', storedName);
-                  if (storedEmail) localStorage.setItem('userEmail', storedEmail);
+                  if (storedName && storedName !== 'undefined') localStorage.setItem('userName', storedName);
+                  if (storedEmail && storedEmail !== 'undefined') localStorage.setItem('userEmail', storedEmail);
                 } catch (e) {}
               }
             } catch (e) {
@@ -337,13 +340,16 @@ const App = () => {
   // Hàm xử lý đăng nhập
   const handleLogin = (user: { name: string; email: string; role: 'USER' | 'ADMIN' }) => {
     setIsAuthenticated(true);
-    setUserData(user);
-    setUserRole(user.role);
+    // Prevents setting literal "undefined" string if backend fields mismatch
+    const validName = user.name && user.name !== 'undefined' ? user.name : 'Người dùng';
+    const validUser = { ...user, name: validName };
+    setUserData(validUser);
+    setUserRole(validUser.role);
     // persist basic profile so reload / direct-url keeps the name
     try {
-      localStorage.setItem('userName', user.name);
-      localStorage.setItem('userEmail', user.email);
-      localStorage.setItem('userRole', user.role);
+      localStorage.setItem('userName', validUser.name);
+      localStorage.setItem('userEmail', validUser.email);
+      localStorage.setItem('userRole', validUser.role);
     } catch (e) {}
     setShowAuthPage(false);
   };

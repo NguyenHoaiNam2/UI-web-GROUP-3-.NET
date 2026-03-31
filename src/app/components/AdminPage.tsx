@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, Edit, Save, X, Search, AlertTriangle, Layers, Download, Eye, FileText, BookOpen, Settings, RefreshCw } from 'lucide-react';
+import { Plus, Trash2, Edit, Save, X, Search, AlertTriangle, Layers, Download, Eye, FileText, BookOpen, Settings, RefreshCw, LayoutDashboard, Users, FileEdit, BarChart, ChevronLeft, ChevronRight, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 
@@ -13,12 +13,16 @@ interface AdminPageProps {
 
 export const AdminPage: React.FC<AdminPageProps> = ({ questions, setQuestions, chapters: propChapters }) => {
   const chapters = propChapters && propChapters.length ? propChapters : CHAPTERS;
-  const [adminTab, setAdminTab] = useState<'overview'|'questions'|'review'|'docs'|'settings'>('overview');
+  const [adminTab, setAdminTab] = useState<'questions'|'exams'|'docs'|'settings'>('questions');
   const [isEditing, setIsEditing] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState<Partial<Question>>({});
   const [searchTerm, setSearchTerm] = useState('');
   const [filterChapter, setFilterChapter] = useState<number | 'ALL'>('ALL');
   const [filterParalysis, setFilterParalysis] = useState<boolean | 'ALL'>('ALL');
+
+  // Pagination for questions
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   // Form Handlers
   const handleAddNew = () => {
@@ -98,6 +102,12 @@ export const AdminPage: React.FC<AdminPageProps> = ({ questions, setQuestions, c
     const matchesParalysis = filterParalysis === 'ALL' || q.isParalysis === filterParalysis;
     return matchesSearch && matchesChapter && matchesParalysis;
   });
+
+  const totalPages = Math.ceil(filteredQuestions.length / itemsPerPage);
+  const paginatedQuestions = filteredQuestions.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   // Documents
   type Doc = { id: string; name: string; link: string; createdAt: number };
@@ -197,15 +207,39 @@ export const AdminPage: React.FC<AdminPageProps> = ({ questions, setQuestions, c
   // Admin: fetch questions from remote API and merge/replace local questions
   const fetchQuestionsFromServer = async () => {
     try {
-      const res = await fetch('https://localhost:52207/api/CauHoi');
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const rawData = await res.json();
+      toast.info('Đang tải dữ liệu từ máy chủ...');
+      let allData: any[] = [];
       
-      const data = Array.isArray(rawData) ? rawData : (rawData.questions || rawData.data || rawData.items || []);
+      const res1 = await fetch('https://localhost:52207/api/CauHoi?SoLuong=60&trang=1');
+      if (!res1.ok) throw new Error(`HTTP ${res1.status}`);
+      const rawData1 = await res1.json();
       
-      if (!Array.isArray(data) || data.length === 0) throw new Error('Invalid response or empty data');
+      if (rawData1.questions && Array.isArray(rawData1.questions)) {
+        allData = allData.concat(rawData1.questions);
+      } else {
+        const data = Array.isArray(rawData1) ? rawData1 : (rawData1.data || rawData1.items || []);
+        allData = allData.concat(data);
+      }
+      
+      const totalPages = rawData1.totalPages || 1;
+      
+      for (let i = 2; i <= totalPages; i++) {
+        try {
+          const r = await fetch(`https://localhost:52207/api/CauHoi?SoLuong=60&trang=${i}`);
+          if (r.ok) {
+            const pageData = await r.json();
+            if (pageData.questions && Array.isArray(pageData.questions)) {
+              allData = allData.concat(pageData.questions);
+            }
+          }
+        } catch (e) {
+          console.warn(`Failed to fetch page ${i}`, e);
+        }
+      }
 
-      const mapped: Question[] = data.map((q: any) => {
+      if (allData.length === 0) throw new Error('Không có dữ liệu câu hỏi');
+      
+      const mapped: Question[] = allData.map((q: any) => {
         const options = Array.isArray(q.answers) ? q.answers.map((a: any) => a?.answerContent ?? String(a)) : [];
         let correctIndex = 0;
         if (Array.isArray(q.answers)) {
@@ -249,311 +283,379 @@ export const AdminPage: React.FC<AdminPageProps> = ({ questions, setQuestions, c
   const closeView = () => setViewDoc(null);
 
   return (
-    <div className="flex-1 bg-gray-50 min-h-screen py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-6xl mx-auto space-y-12">
-        
-        {/* Header Section */}
-        <div className="text-center mb-12">
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center justify-center p-4 bg-blue-100 rounded-full mb-4"
-          >
-            <Settings className="w-8 h-8 text-blue-600" />
-          </motion.div>
-          <motion.h1 
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="text-4xl font-extrabold text-gray-900 mb-4"
-          >
-            Quản Trị Hệ Thống
-          </motion.h1>
-          <motion.p 
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="text-lg text-gray-600 max-w-2xl mx-auto"
-          >
-            Quản lý ngân hàng câu hỏi, tài liệu học tập và các thiết lập hệ thống khác.
-          </motion.p>
-        </div>
-
-        <div className="space-y-6">
-          {/* Top menu (replaces sidebar) - sticky when scrolling */}
-          <div className="sticky top-24 z-40">
-            <nav className="w-full flex flex-wrap items-center gap-3 mb-2 bg-white/60 backdrop-blur-sm px-3 py-2 rounded-xl shadow-sm">
-            <button onClick={() => setAdminTab('overview')} className={`px-4 py-2 rounded-xl transition-colors ${adminTab==='overview' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 border border-gray-100'}`}>
-              <div className="flex items-center gap-2"><BookOpen size={16} /> <span className="hidden sm:inline">Overview</span></div>
-            </button>
-            <button onClick={() => setAdminTab('questions')} className={`px-4 py-2 rounded-xl transition-colors ${adminTab==='questions' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 border border-gray-100'}`}>
-              <div className="flex items-center gap-2"><BookOpen size={16} /> <span className="hidden sm:inline">Questions</span></div>
-            </button>
-            <button onClick={() => setAdminTab('review')} className={`px-4 py-2 rounded-xl transition-colors ${adminTab==='review' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 border border-gray-100'}`}>
-              <div className="flex items-center gap-2"><Layers size={16} /> <span className="hidden sm:inline">Review Chapters</span></div>
-            </button>
-            <button onClick={() => setAdminTab('docs')} className={`px-4 py-2 rounded-xl transition-colors ${adminTab==='docs' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 border border-gray-100'}`}>
-              <div className="flex items-center gap-2"><FileText size={16} /> <span className="hidden sm:inline">Documents</span></div>
-            </button>
-            <button onClick={() => setAdminTab('settings')} className={`px-4 py-2 rounded-xl transition-colors ${adminTab==='settings' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 border border-gray-100'}`}>
-              <div className="flex items-center gap-2"><Settings size={16} /> <span className="hidden sm:inline">Settings</span></div>
-            </button>
-          </nav>
+    <>
+      <div className="flex h-screen bg-gray-50 overflow-hidden">
+        {/* Left Sidebar */}
+      <aside className="w-64 bg-white border-r border-gray-200 flex-col hidden md:flex z-50">
+        <div className="p-6 border-b border-gray-100 flex items-center gap-3">
+          <div className="p-2 bg-blue-600 rounded-lg">
+            <Settings className="w-5 h-5 text-white" />
           </div>
+          <span className="font-bold text-lg text-gray-900">Admin Panel</span>
+        </div>
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+          {[
+            { id: 'questions', label: 'Ngân hàng câu hỏi', icon: BookOpen },
+            { id: 'exams', label: 'Quản lý đề thi', icon: FileEdit },
+            { id: 'docs', label: 'Tài liệu', icon: FileText },
+            { id: 'settings', label: 'Cài đặt', icon: Settings },
+          ].map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setAdminTab(item.id as any)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                adminTab === item.id 
+                  ? 'bg-blue-50 text-blue-700 font-semibold' 
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+              }`}
+            >
+              <item.icon size={18} className={adminTab === item.id ? 'text-blue-600' : 'text-gray-400'} />
+              <span>{item.label}</span>
+            </button>
+          ))}
+        </nav>
+      </aside>
 
-          <main>
-            {/* Quick Stats Dashboard (overview) */}
-            {adminTab === 'overview' && (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-                <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
-                  <div className="p-3 bg-blue-50 text-blue-600 rounded-lg">
-                    <BookOpen size={20} />
-                  </div>
-                  <div>
-                    <div className="text-sm text-gray-500">Tổng câu hỏi</div>
-                    <div className="text-2xl font-bold text-gray-900">{questions.length}</div>
-                  </div>
-                </div>
+      {/* Main Content Area */}
+      <main className="flex-1 overflow-y-auto h-screen p-4 sm:p-8">
+        <div className="max-w-6xl mx-auto space-y-8">
+          
+          {/* Main sections based on tab */}
+          <div className="space-y-6">
 
-                <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
-                  <div className="p-3 bg-red-50 text-red-600 rounded-lg">
-                    <AlertTriangle size={20} />
-                  </div>
-                  <div>
-                    <div className="text-sm text-gray-500">Câu điểm liệt</div>
-                    <div className="text-2xl font-bold text-gray-900">{questions.filter(q => q.isParalysis).length}</div>
-                  </div>
-                </div>
-
-                <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 bg-green-50 text-green-600 rounded-lg">
-                      <Layers size={20} />
+            {/* Question Bank Section */}
+            {adminTab === 'questions' && (
+              <motion.section 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden"
+              >
+                <div className="p-6 sm:p-8 border-b border-gray-100 bg-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
+                      <BookOpen size={24} />
                     </div>
                     <div>
-                      <div className="text-sm text-gray-500">Chapters (API/Local)</div>
-                      <div className="text-2xl font-bold text-gray-900">{(propChapters && propChapters.length) ? `${propChapters.length} / ${chapters.length}` : `${chapters.length}`}</div>
+                      <h2 className="text-2xl font-bold text-gray-900">Ngân Hàng Câu Hỏi</h2>
+                      <p className="text-sm text-gray-500 mt-1">Quản lý {questions.length} câu hỏi trong hệ thống</p>
+                      <div className="mt-2 flex flex-wrap gap-2 text-sm">
+                        <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-lg">Tổng: <strong className="ml-2">{questions.length}</strong></span>
+                        <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-lg">Câu điểm liệt: <strong className="ml-2">{questions.filter(q => q.isParalysis).length}</strong></span>
+                        <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-lg">Chương khác: <strong className="ml-2">{new Set(questions.map(q => q.chapterId)).size}</strong></span>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button onClick={async () => {
-                      try {
-                        const res = await fetch('http://localhost:3000/api/chapters');
-                        if (!res.ok) throw new Error('HTTP ' + res.status);
-                        const data = await res.json();
-                        if (!Array.isArray(data)) throw new Error('Invalid response');
-                        const mapped = data.map((c: any) => ({ id: Number(c.id) + 1, title: c.title ?? `Chương ${c.id}`, description: c.description ?? '', questionIds: Array.isArray(c.questionIds) ? c.questionIds.map((n: any) => Number(n)) : [] }));
-                        try { window.localStorage.setItem('chapters', JSON.stringify(mapped)); } catch {}
-                        toast.success(`Đã tải ${mapped.length} chương từ server`);
-                      } catch (err) {
-                        console.warn('Failed to fetch chapters', err);
-                        toast.error('Không thể tải chapters từ server');
-                      }
-                    }} className="px-3 py-2 bg-blue-50 text-blue-600 rounded-xl">Tải Chapters</button>
+                  <div className="flex gap-3 w-full md:w-auto">
+                    <button
+                      onClick={handleAddNew}
+                      className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl shadow-sm flex items-center justify-center gap-2 transition-all transform hover:scale-105 font-medium"
+                    >
+                      <Plus size={20} />
+                      <span>Thêm Câu Hỏi Mới</span>
+                    </button>
+                    <button
+                      onClick={fetchQuestionsFromServer}
+                      className={`w-full md:w-auto bg-green-50 hover:bg-green-100 text-green-700 px-4 py-3 rounded-xl shadow-sm flex items-center justify-center gap-2 transition-all font-medium`}
+                      title="Lấy câu hỏi từ server"
+                    >
+                      <RefreshCw size={18} />
+                      <span className="hidden sm:inline">Lấy từ server</span>
+                    </button>
+                    <button
+                      onClick={handleDeleteAll}
+                      disabled={questions.length === 0}
+                      className={`w-full md:w-auto bg-red-50 hover:bg-red-100 text-red-600 px-4 py-3 rounded-xl shadow-sm flex items-center justify-center gap-2 transition-all font-medium ${questions.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      title="Xóa tất cả câu hỏi"
+                    >
+                      <Trash2 size={18} />
+                      <span className="hidden sm:inline">Xóa tất cả</span>
+                    </button>
                   </div>
                 </div>
-              </div>
+
+                <div className="p-6 sm:p-8 bg-gray-50/50">
+                  {/* Filters */}
+                  <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-6 flex flex-col md:flex-row gap-4 items-center">
+                    <div className="relative flex-1 w-full">
+                      <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                      <input
+                        type="text"
+                        placeholder="Tìm kiếm nội dung câu hỏi..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-gray-50 focus:bg-white"
+                      />
+                    </div>
+                    
+                    <div className="flex gap-3 w-full md:w-auto">
+                        <select
+                            value={filterChapter}
+                            onChange={(e) => setFilterChapter(e.target.value === 'ALL' ? 'ALL' : Number(e.target.value))}
+                            className="px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 focus:bg-white min-w-[180px] transition-all"
+                        >
+                            <option value="ALL">Tất cả chương</option>
+                            {chapters.map(c => (
+                                <option key={c.id} value={c.id}>{c.title}</option>
+                            ))}
+                        </select>
+
+                        <select
+                            value={String(filterParalysis)}
+                            onChange={(e) => setFilterParalysis(e.target.value === 'ALL' ? 'ALL' : e.target.value === 'true')}
+                            className="px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 focus:bg-white transition-all"
+                        >
+                            <option value="ALL">Tất cả loại câu</option>
+                            <option value="false">Câu thường</option>
+                            <option value="true">Câu điểm liệt</option>
+                        </select>
+                    </div>
+                  </div>
+
+                  {/* Question Table & Pagination */}
+                  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-gray-50 border-b border-gray-100">
+                          <th className="p-4 font-semibold text-gray-600 text-sm">ID</th>
+                          <th className="p-4 font-semibold text-gray-600 text-sm">Nội dung</th>
+                          <th className="p-4 font-semibold text-gray-600 text-sm">Chương</th>
+                          <th className="p-4 font-semibold text-gray-600 text-sm text-center">Thao tác</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <AnimatePresence>
+                          {paginatedQuestions.length === 0 ? (
+                            <tr>
+                              <td colSpan={4} className="p-8 text-center text-gray-500">
+                                Không tìm thấy câu hỏi nào.
+                              </td>
+                            </tr>
+                          ) : (
+                            paginatedQuestions.map((q, i) => (
+                              <motion.tr
+                                key={q.id}
+                                layout
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors"
+                              >
+                                <td className="p-4 text-sm text-gray-500 align-top max-w-[80px] break-all">
+                                  {q.id.toString().replace('api-', '')}
+                                </td>
+                                <td className="p-4 align-top">
+                                  <div className="flex items-start gap-2 mb-1">
+                                    {q.isParalysis && (
+                                      <span className="inline-flex shrink-0 items-center justify-center p-1 bg-red-100 text-red-600 rounded-md" title="Câu điểm liệt">
+                                        <AlertTriangle size={14} />
+                                      </span>
+                                    )}
+                                    <span className="font-medium text-gray-900 line-clamp-2" title={q.content}>{q.content}</span>
+                                  </div>
+                                  <div className="text-sm text-gray-500 mt-1 line-clamp-1">
+                                    {q.options.length} đáp án - Đáp án đúng: số {q.correctAnswer + 1}
+                                  </div>
+                                </td>
+                                <td className="p-4 align-top w-48">
+                                  <span className="inline-flex px-2 py-1 bg-gray-100 text-gray-700 text-xs font-semibold rounded-lg">
+                                    {chapters.find(c => c.id === q.chapterId)?.title || `Chương ${q.chapterId}`}
+                                  </span>
+                                </td>
+                                <td className="p-4 align-top w-28 text-center">
+                                  <div className="flex items-center justify-center gap-2">
+                                    <button onClick={() => handleEdit(q)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Sửa">
+                                      <Edit size={16} />
+                                    </button>
+                                    <button onClick={() => handleDelete(q.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Xóa">
+                                      <Trash2 size={16} />
+                                    </button>
+                                  </div>
+                                </td>
+                              </motion.tr>
+                            ))
+                          )}
+                        </AnimatePresence>
+                      </tbody>
+                    </table>
+                    
+                    {/* Pagination Controls */}
+                    {totalPages > 1 && (
+                      <div className="p-4 border-t border-gray-100 flex items-center justify-between bg-gray-50/30">
+                        <span className="text-sm text-gray-600">
+                          Hiển thị {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredQuestions.length)} trong {filteredQuestions.length} câu
+                        </span>
+                        <div className="flex gap-1">
+                          <button 
+                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                            disabled={currentPage === 1}
+                            className="p-2 border border-gray-200 rounded-lg text-gray-600 disabled:opacity-50 hover:bg-white bg-gray-50"
+                          >
+                            <ChevronLeft size={16} />
+                          </button>
+                          <div className="flex items-center px-2 space-x-1">
+                            <span className="text-sm font-medium">{currentPage} / {totalPages}</span>
+                          </div>
+                          <button 
+                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                            disabled={currentPage === totalPages}
+                            className="p-2 border border-gray-200 rounded-lg text-gray-600 disabled:opacity-50 hover:bg-white bg-gray-50"
+                          >
+                            <ChevronRight size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </motion.section>
             )}
 
-        {/* Question Bank Section */}
-        <motion.section 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden"
-        >
-          <div className="p-6 sm:p-8 border-b border-gray-100 bg-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
-                <BookOpen size={24} />
-              </div>
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900">Ngân Hàng Câu Hỏi</h2>
-                <p className="text-sm text-gray-500 mt-1">Quản lý {questions.length} câu hỏi trong hệ thống</p>
-                <div className="mt-2 flex flex-wrap gap-2 text-sm">
-                  <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-lg">Tổng: <strong className="ml-2">{questions.length}</strong></span>
-                  <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-lg">Câu điểm liệt: <strong className="ml-2">{questions.filter(q => q.isParalysis).length}</strong></span>
-                  <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-lg">Chương khác: <strong className="ml-2">{new Set(questions.map(q => q.chapterId)).size}</strong></span>
-                </div>
-              </div>
-            </div>
-            <div className="flex gap-3 w-full md:w-auto">
-              <button
-                onClick={handleAddNew}
-                className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl shadow-sm flex items-center justify-center gap-2 transition-all transform hover:scale-105 font-medium"
-              >
-                <Plus size={20} />
-                <span>Thêm Câu Hỏi Mới</span>
-              </button>
-              <button
-                onClick={fetchQuestionsFromServer}
-                className={`w-full md:w-auto bg-green-50 hover:bg-green-100 text-green-700 px-4 py-3 rounded-xl shadow-sm flex items-center justify-center gap-2 transition-all font-medium`}
-                title="Lấy câu hỏi từ server"
-              >
-                <RefreshCw size={18} />
-                <span className="hidden sm:inline">Lấy từ server</span>
-              </button>
-              <button
-                onClick={handleDeleteAll}
-                disabled={questions.length === 0}
-                className={`w-full md:w-auto bg-red-50 hover:bg-red-100 text-red-600 px-4 py-3 rounded-xl shadow-sm flex items-center justify-center gap-2 transition-all font-medium ${questions.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
-                title="Xóa tất cả câu hỏi"
-              >
-                <Trash2 size={18} />
-                <span className="hidden sm:inline">Xóa tất cả</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Review Chapters Management */}
-          <div className="p-6 sm:p-8 bg-gray-50/50 border-t border-gray-100">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-lg font-bold text-gray-900">Quản lý nội dung Ôn Tập</h3>
-                <p className="text-sm text-gray-500">Tạo/sửa các chương ôn tập và gán danh sách câu hỏi (questionIds)</p>
-              </div>
-              <div className="flex gap-2">
-                <button onClick={() => openEditReview()} className="px-4 py-2 bg-blue-600 text-white rounded-xl">Thêm chương</button>
-                <button onClick={applyReviewMappingToQuestions} className="px-4 py-2 bg-green-600 text-white rounded-xl">Áp dụng phân chương</button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-3">
-              {reviewChapters.map(rc => (
-                <div key={rc.id} className="bg-white p-4 rounded-xl border border-gray-100 flex items-start justify-between gap-4">
+            {/* Review Chapters Management */}
+            {adminTab === 'exams' && (
+              <motion.div className="p-6 sm:p-8 bg-white rounded-3xl shadow-sm border border-gray-100">
+                <div className="flex items-center justify-between mb-4">
                   <div>
-                    <div className="text-sm text-gray-500">ID: {rc.id}</div>
-                    <div className="font-semibold text-gray-900">{rc.title}</div>
-                    <div className="text-sm text-gray-600">{rc.topic}</div>
-                    <div className="text-xs text-gray-400 mt-2">Chi tiết: {rc.detail}</div>
-                    <div className="text-xs text-gray-500 mt-2">Số câu gán: {Array.isArray(rc.questionIds) ? rc.questionIds.length : 0}</div>
+                    <h3 className="text-lg font-bold text-gray-900">Quản lý nội dung Ôn Tập / Đề Thi</h3>
+                    <p className="text-sm text-gray-500">Tạo/sửa các chương ôn tập và gán danh sách câu hỏi (questionIds)</p>
                   </div>
-                  <div className="flex flex-col gap-2">
-                    <button onClick={() => openEditReview(rc)} className="px-3 py-2 bg-blue-50 text-blue-600 rounded-xl">Sửa</button>
-                    <button onClick={() => { saveReviewChapters(reviewChapters.filter(x => x.id !== rc.id)); toast.success('Đã xóa chương ôn tập'); }} className="px-3 py-2 bg-red-50 text-red-600 rounded-xl">Xóa</button>
+                  <div className="flex gap-2">
+                    <button onClick={() => openEditReview()} className="px-4 py-2 bg-blue-600 text-white rounded-xl flex items-center gap-2"><Plus size={16}/> Thêm chương</button>
+                    <button onClick={applyReviewMappingToQuestions} className="px-4 py-2 bg-green-600 text-white rounded-xl flex items-center gap-2"><RefreshCw size={16}/> Áp dụng phân chương</button>
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
 
-          <div className="p-6 sm:p-8 bg-gray-50/50">
-            {/* Filters */}
-            <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-6 flex flex-col md:flex-row gap-4 items-center">
-              <div className="relative flex-1 w-full">
-                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-                <input
-                  type="text"
-                  placeholder="Tìm kiếm nội dung câu hỏi..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-gray-50 focus:bg-white"
-                />
-              </div>
-              
-              <div className="flex gap-3 w-full md:w-auto">
-                  <select
-                      value={filterChapter}
-                      onChange={(e) => setFilterChapter(e.target.value === 'ALL' ? 'ALL' : Number(e.target.value))}
-                      className="px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 focus:bg-white min-w-[180px] transition-all"
-                  >
-                      <option value="ALL">Tất cả chương</option>
-                      {chapters.map(c => (
-                          <option key={c.id} value={c.id}>{c.title}</option>
-                      ))}
-                  </select>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
+                  {reviewChapters.map(rc => (
+                    <div key={rc.id} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow flex flex-col gap-4">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <div className="text-xl font-bold text-gray-900">{rc.title}</div>
+                          <div className="text-sm font-medium text-blue-600 mt-1">{rc.topic}</div>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          <button onClick={() => openEditReview(rc)} className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100"><Edit size={16}/></button>
+                          <button onClick={() => { saveReviewChapters(reviewChapters.filter(x => x.id !== rc.id)); toast.success('Đã xóa chương ôn tập'); }} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100"><Trash2 size={16}/></button>
+                        </div>
+                      </div>
+                      <div className="text-sm text-gray-500 mt-auto pt-4 border-t border-gray-50">
+                        <div className="mb-2">{rc.detail}</div>
+                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-gray-100 rounded-lg text-gray-700 font-medium">
+                          <BookOpen size={14} />
+                          {Array.isArray(rc.questionIds) ? rc.questionIds.length : 0} câu hỏi
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
 
-                  <select
-                      value={String(filterParalysis)}
-                      onChange={(e) => setFilterParalysis(e.target.value === 'ALL' ? 'ALL' : e.target.value === 'true')}
-                      className="px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 focus:bg-white transition-all"
-                  >
-                      <option value="ALL">Tất cả loại câu</option>
-                      <option value="false">Câu thường</option>
-                      <option value="true">Câu điểm liệt</option>
-                  </select>
-              </div>
-            </div>
+            {/* Documents Section */}
+            {adminTab === 'docs' && (
+              <motion.section 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden"
+              >
+                <div className="p-6 sm:p-8 border-b border-gray-100 bg-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
+                      <FileText size={24} />
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-bold text-gray-900">Quản Lý Tài Liệu</h2>
+                      <p className="text-sm text-gray-500 mt-1">Quản lý {documents.length} tài liệu học tập</p>
+                    </div>
+                  </div>
+                </div>
 
-            {/* Question List */}
-            <div className="grid grid-cols-1 gap-4">
-              <AnimatePresence>
-                  {filteredQuestions.length === 0 ? (
-                      <motion.div 
-                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                        className="text-center py-16 text-gray-400 bg-white rounded-2xl border-2 border-dashed border-gray-200"
-                      >
-                          <BookOpen className="mx-auto h-12 w-12 text-gray-300 mb-4" />
-                          <p className="text-lg font-medium text-gray-900">Không tìm thấy câu hỏi</p>
-                          <p className="mt-1 text-gray-500">Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm.</p>
-                      </motion.div>
-                  ) : (
-                      filteredQuestions.map((q) => (
-                          <motion.div
-                              key={q.id}
-                              layout
-                              initial={{ opacity: 0, y: 20 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0, scale: 0.95 }}
-                              className={`bg-white p-6 rounded-2xl shadow-sm border transition-all hover:shadow-md flex flex-col sm:flex-row gap-6 ${q.isParalysis ? 'border-red-200 hover:border-red-300' : 'border-gray-100 hover:border-blue-200'}`}
-                          >
-                            <div className="flex-1 min-w-0">
-                                <div className="flex flex-wrap items-center gap-2 mb-3">
-                                    <span className="px-3 py-1 bg-gray-100 text-gray-600 text-xs font-bold rounded-lg uppercase tracking-wider">
-                                        {chapters.find(c => c.id === q.chapterId)?.title || 'Chương ?'}
-                                    </span>
-                                    {q.isParalysis && (
-                                        <span className="flex items-center gap-1 px-3 py-1 bg-red-50 text-red-600 text-xs font-bold rounded-lg uppercase tracking-wider border border-red-100">
-                                            <AlertTriangle size={14} />
-                                            Câu điểm liệt
-                                        </span>
-                                    )}
-                                </div>
-                                <h3 className="font-semibold text-lg text-gray-900 mb-2 leading-relaxed">{q.content}</h3>
-                                {q.explanation && (
-                                    <p className="text-sm text-gray-500 mb-4 bg-gray-50 p-3 rounded-xl border border-gray-100">{q.explanation}</p>
-                                )}
-                                <ul className="space-y-3 mt-4">
-                                    {q.options.map((opt, idx) => (
-                                        <li key={idx} className={`flex items-start gap-3 p-3 rounded-xl border transition-colors ${idx === q.correctAnswer ? 'border-green-200 bg-green-50/50 text-green-800' : 'border-gray-100 bg-white text-gray-600'}`}>
-                                            <div className={`mt-0.5 shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center ${idx === q.correctAnswer ? 'border-green-500 bg-green-500' : 'border-gray-300'}`}>
-                                                {idx === q.correctAnswer && <div className="w-2 h-2 rounded-full bg-white" />}
-                                            </div>
-                                            <span className="text-sm leading-relaxed">{opt}</span>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                            <div className="flex sm:flex-col gap-2 shrink-0 border-t sm:border-t-0 sm:border-l border-gray-100 pt-4 sm:pt-0 sm:pl-6 justify-end sm:justify-start">
-                                <button
-                                    onClick={() => handleEdit(q)}
-                                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors"
-                                    title="Sửa"
-                                >
-                                    <Edit size={16} />
-                                    <span className="sm:hidden">Sửa</span>
-                                </button>
-                                <button
-                                    onClick={() => handleDelete(q.id)}
-                                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition-colors"
-                                    title="Xóa"
-                                >
-                                    <Trash2 size={16} />
-                                    <span className="sm:hidden">Xóa</span>
-                                </button>
-                            </div>
+                <div className="p-6 sm:p-8 bg-gray-50/50">
+                  {/* Upload */}
+                  <div className="flex justify-center mb-6">
+                    <button
+                      onClick={() => setIsDocModalOpen(true)}
+                      className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl shadow-sm transition-transform transform hover:scale-105"
+                    >
+                      <Plus size={18} />
+                      Thêm Tài Liệu
+                    </button>
+                  </div>
+
+                  {/* Document List */}
+                  <div className="grid grid-cols-1 gap-4">
+                    <AnimatePresence>
+                      {documents.length === 0 ? (
+                        <motion.div 
+                          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                          className="text-center py-16 text-gray-400 bg-white rounded-2xl border-2 border-dashed border-gray-200"
+                        >
+                          <FileText className="mx-auto h-12 w-12 text-gray-300 mb-4" />
+                          <p className="text-lg font-medium text-gray-900">Chưa có tài liệu nào</p>
+                          <p className="mt-1 text-gray-500">Hãy thêm tài liệu mới để học viên có thể tải xuống.</p>
                         </motion.div>
-                    ))
-                )}
-            </AnimatePresence>
-            </div>
-          </div>
-        </motion.section>
+                      ) : (
+                        documents.map(d => (
+                          <motion.div
+                            key={d.id}
+                            layout
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md hover:border-blue-200 transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 group"
+                          >
+                            <div className="flex items-start gap-4 min-w-0 flex-1">
+                              <div className="p-3 bg-blue-50 text-blue-600 rounded-xl group-hover:bg-blue-600 group-hover:text-white transition-colors shrink-0">
+                                <FileText size={24} />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <h3 className="font-semibold text-lg text-gray-900 truncate group-hover:text-blue-600 transition-colors">{d.name}</h3>
+                                <p className="text-sm text-gray-500 truncate mt-1">{d.link}</p>
+                                <div className="text-xs text-gray-400 mt-2">Đăng lúc: {new Date(d.createdAt).toLocaleString('vi-VN')}</div>
+                              </div>
+                            </div>
 
-          </main>
-        </div>
+                            <div className="flex items-center gap-2 w-full sm:w-auto justify-end border-t sm:border-t-0 pt-4 sm:pt-0 border-gray-100">
+                              <button
+                                onClick={() => handleDownloadDoc(d.link, d.name)}
+                                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors"
+                                title="Tải xuống"
+                              >
+                                <Download size={16} />
+                                <span className="sm:hidden">Tải xuống</span>
+                              </button>
+                              <button
+                                onClick={() => handleViewDoc(d)}
+                                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors"
+                                title="Xem"
+                              >
+                                <Eye size={16} />
+                                <span className="sm:hidden">Xem</span>
+                              </button>
+                              <button
+                                onClick={() => handleDeleteDoc(d.id)}
+                                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition-colors"
+                                title="Xóa"
+                              >
+                                <Trash2 size={16} />
+                                <span className="sm:hidden">Xóa</span>
+                              </button>
+                            </div>
+                          </motion.div>
+                        ))
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </div>
+              </motion.section>
+            )}
+          </div> {/* End .space-y-6 */}
+        </div> {/* End .max-w-6xl */}
+      </main>
+    </div>
 
-      {/* Edit Modal */}
+    {/* Edit Modal */}
       <AnimatePresence>
       {isEditing && (
         <motion.div 
@@ -759,104 +861,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({ questions, setQuestions, c
         </motion.div>
       )}
       </AnimatePresence>
-      {/* Documents Section */}
-      <motion.section 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
-        className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden"
-      >
-        <div className="p-6 sm:p-8 border-b border-gray-100 bg-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
-              <FileText size={24} />
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">Quản Lý Tài Liệu</h2>
-              <p className="text-sm text-gray-500 mt-1">Quản lý {documents.length} tài liệu học tập</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="p-6 sm:p-8 bg-gray-50/50">
-          {/* Upload: show a single centered button that opens modal */}
-          <div className="flex justify-center mb-6">
-            <button
-              onClick={() => setIsDocModalOpen(true)}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl shadow-sm transition-transform transform hover:scale-105"
-            >
-              <Plus size={18} />
-              Thêm Tài Liệu
-            </button>
-          </div>
-
-          {/* Document List */}
-          <div className="grid grid-cols-1 gap-4">
-            <AnimatePresence>
-              {documents.length === 0 ? (
-                <motion.div 
-                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                  className="text-center py-16 text-gray-400 bg-white rounded-2xl border-2 border-dashed border-gray-200"
-                >
-                  <FileText className="mx-auto h-12 w-12 text-gray-300 mb-4" />
-                  <p className="text-lg font-medium text-gray-900">Chưa có tài liệu nào</p>
-                  <p className="mt-1 text-gray-500">Hãy thêm tài liệu mới để học viên có thể tải xuống.</p>
-                </motion.div>
-              ) : (
-                documents.map(d => (
-                  <motion.div
-                    key={d.id}
-                    layout
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md hover:border-blue-200 transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 group"
-                  >
-                    <div className="flex items-start gap-4 min-w-0 flex-1">
-                      <div className="p-3 bg-blue-50 text-blue-600 rounded-xl group-hover:bg-blue-600 group-hover:text-white transition-colors shrink-0">
-                        <FileText size={24} />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <h3 className="font-semibold text-lg text-gray-900 truncate group-hover:text-blue-600 transition-colors">{d.name}</h3>
-                        <p className="text-sm text-gray-500 truncate mt-1">{d.link}</p>
-                        <div className="text-xs text-gray-400 mt-2">Đăng lúc: {new Date(d.createdAt).toLocaleString('vi-VN')}</div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 w-full sm:w-auto justify-end border-t sm:border-t-0 pt-4 sm:pt-0 border-gray-100">
-                      <button
-                        onClick={() => handleDownloadDoc(d.link, d.name)}
-                        className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors"
-                        title="Tải xuống"
-                      >
-                        <Download size={16} />
-                        <span className="sm:hidden">Tải xuống</span>
-                      </button>
-                      <button
-                        onClick={() => handleViewDoc(d)}
-                        className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors"
-                        title="Xem"
-                      >
-                        <Eye size={16} />
-                        <span className="sm:hidden">Xem</span>
-                      </button>
-                      <button
-                        onClick={() => handleDeleteDoc(d.id)}
-                        className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition-colors"
-                        title="Xóa"
-                      >
-                        <Trash2 size={16} />
-                        <span className="sm:hidden">Xóa</span>
-                      </button>
-                    </div>
-                  </motion.div>
-                ))
-              )}
-            </AnimatePresence>
-          </div>
-        </div>
-      </motion.section>
-
       {/* Document Viewer Modal */}
       <AnimatePresence>
       {viewDoc && (
@@ -979,8 +983,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ questions, setQuestions, c
             </motion.div>
           )}
         </AnimatePresence>
-    </div>
-  </div>
+    </>
   );
 };
 
