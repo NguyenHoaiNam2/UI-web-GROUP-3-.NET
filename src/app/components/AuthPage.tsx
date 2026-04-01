@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { LogIn, UserPlus, Mail, Lock, User, Eye, EyeOff, ArrowRight, AlertCircle, ArrowLeft } from 'lucide-react';
 import logoImage from '@/assets/logo.svg';
+import {url} from '../../env.js'
 
 interface AuthPageProps {
   onLogin: (userData: { 
@@ -33,7 +34,7 @@ export const AuthPage = ({ onLogin, onNavigateToPrivacy, onBack }: AuthPageProps
     try {
       if (isLogin) {
         // Đăng nhập qua API
-        const response = await fetch('https://localhost:52207/auth/login', {
+        const response = await fetch(url + 'auth/login', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -69,7 +70,7 @@ export const AuthPage = ({ onLogin, onNavigateToPrivacy, onBack }: AuthPageProps
         }
 
         // Đăng ký qua API
-        const response = await fetch('https://localhost:52207/auth/register', {
+        const response = await fetch(url + 'auth/register', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

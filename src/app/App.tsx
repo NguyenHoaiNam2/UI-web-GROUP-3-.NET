@@ -21,6 +21,7 @@ import { Question } from '@/app/types';
 import { Chapter, CHAPTERS } from '@/app/types'; // Ensure Chapter and CHAPTERS are imported
 
 import CallPopup from "./components/CallPopup";
+import { url } from '../env.js';
 
 
 // Định nghĩa các trang chính
@@ -113,7 +114,7 @@ const App = () => {
           // If profile not stored locally try to fetch it from API
           if (!storedName && token) {
             try {
-              const res = await fetch('https://localhost:52207/auth/me', {
+              const res = await fetch(url + 'auth/me', {
                 headers: { Authorization: `Bearer ${token}` },
               });
               if (res && res.ok) {
@@ -140,12 +141,12 @@ const App = () => {
           setIsAuthenticated(false);
           setUserRole(null);
           setUserData({ name: 'Khách', email: '' });
-          setShowAuthPage(true);
+          setShowAuthPage(false);
         }
       } catch (err) {
         // ignore and show auth
         setIsAuthenticated(false);
-        setShowAuthPage(true);
+        setShowAuthPage(false);
       }
     };
 
@@ -186,9 +187,9 @@ const App = () => {
 
     const fetchAll = async () => {
       try {
-        console.log('Fetching questions from API: https://localhost:52207/api/CauHoi');
-        // Fetch using the new API format
-        const res = await fetch('https://localhost:52207/api/CauHoi'); // Assuming API is running on this backend port for now
+  console.log('Fetching questions from API:', url + 'api/CauHoi');
+  // Fetch using the new API format
+  const res = await fetch(url + 'api/CauHoi'); // Assuming API is running on this backend URL for now
         let dataQ: any[] = [];
 
         if (res && res.ok) {

@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 
 import { CHAPTERS, Question, Chapter } from '@/app/types';
+import { url } from '../../env.js';
 
 interface AdminPageProps {
   questions: Question[];
@@ -208,7 +209,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ questions, setQuestions, c
       // Fetch questions for each of the 7 chapters (1 to 7)
       for (let chapterNum = 1; chapterNum <= 7; chapterNum++) {
         try {
-          const res1 = await fetch(`https://localhost:52207/api/CauHoi?Chuong=${chapterNum}&SoLuong=60&trang=1`);
+          const res1 = await fetch(url + 'api/CauHoi?Chuong=' + chapterNum + '&SoLuong=60&trang=1');       
           if (res1.ok) {
             const rawData1 = await res1.json();
             const totalPages = rawData1.totalPages || 1;
@@ -224,7 +225,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ questions, setQuestions, c
             // Fetch remaining pages for this chapter
             for (let i = 2; i <= totalPages; i++) {
               try {
-                const r = await fetch(`https://localhost:52207/api/CauHoi?Chuong=${chapterNum}&SoLuong=60&trang=${i}`);
+                const r = await fetch(url + 'api/CauHoi?Chuong=' + chapterNum + '&SoLuong=60&trang=' + i);
                 if (r.ok) {
                   const pageData = await r.json();
                   if (pageData.questions && Array.isArray(pageData.questions)) {

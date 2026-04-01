@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { CheckCircle, XCircle, Clock, AlertTriangle, ArrowRight, ArrowLeft, RotateCcw, Loader2 } from 'lucide-react';
 import { Question } from '@/app/types';
-
+import {url} from '../../env.js'
 interface QuizGameProps {
   examTitle: string;
   questions: Question[];
@@ -297,7 +297,7 @@ export const QuizGame: React.FC<QuizGameProps> = ({ examTitle, questions, onExit
           <div className="flex justify-between items-center mb-4 text-gray-500">
             <span className="text-sm font-semibold uppercase tracking-wider">Thời gian còn lại</span>
             <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded font-bold">
-              {correctCount}/{totalQuestions} câu
+              {Object.keys(selectedAnswers).length}/{totalQuestions} câu
             </span>
           </div>
           
@@ -489,7 +489,7 @@ export const QuizGame: React.FC<QuizGameProps> = ({ examTitle, questions, onExit
                 <div className="lg:w-1/2 flex items-start justify-center pt-2">
                   <div className="w-full bg-gray-50/50 p-4 rounded-2xl border border-gray-200 flex items-center justify-center shadow-inner">
                     <img 
-                      src={currentQuestion.imageUrl} 
+                      src={url +'assets/uploads/'+ currentQuestion.imageUrl} 
                       alt="Hình minh họa" 
                       className="max-w-full max-h-[500px] object-contain rounded-xl drop-shadow-md" 
                     />
