@@ -61,12 +61,7 @@ body {
 }
 
 .controls button:hover {
-    background: #ccc;
-}
-
-.end-call {
-    background: red;
-    color: white;
+    background: gray;
 }
 
 /* SIDEBAR */
@@ -95,13 +90,15 @@ body {
     position: absolute;
     top: 5px;
     left: 10px;
-    right: 10px; /* thêm để nút không chạm viền ngoài */
+    right: 10px;
+    /* thêm để nút không chạm viền ngoài */
     display: flex;
     align-items: center;
 }
 
 .auto-scroll-btn {
-    margin-left: auto;       /* đẩy nút về bên phải */
+    margin-left: auto;
+    /* đẩy nút về bên phải */
     padding: 2px 6px;
     font-size: 12px;
     border: 1px solid #888;
@@ -274,5 +271,3 @@ body {
         flex: 1;
     }
 }
-
-

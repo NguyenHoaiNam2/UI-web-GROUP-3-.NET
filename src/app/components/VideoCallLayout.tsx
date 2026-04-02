@@ -87,7 +87,7 @@ const VideoCallLayout: React.FC<Props> = ({ onEndCall, onMinimize }) => {
                     <button onClick={onMinimize}>
                         Thu nhỏ màn hình
                     </button>
-                    <button className="end-call" onClick={onEndCall}>
+                    <button onClick={onEndCall}>
                         Kết Thúc Cuộc Gọi
                     </button>
                 </div>
