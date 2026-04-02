@@ -14,7 +14,7 @@ interface AdminPageProps {
 
 export const AdminPage: React.FC<AdminPageProps> = ({ questions, setQuestions, chapters: propChapters }) => {
   const chapters = propChapters && propChapters.length ? propChapters : CHAPTERS;
-  const [adminTab, setAdminTab] = useState<'questions'|'exams'|'docs'|'settings'>('questions');
+  const [adminTab, setAdminTab] = useState<'questions'|'exams'|'settings'>('questions');
   const [isEditing, setIsEditing] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState<Partial<Question>>({});
   const [searchTerm, setSearchTerm] = useState('');
@@ -110,16 +110,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({ questions, setQuestions, c
     currentPage * itemsPerPage
   );
 
-  // Documents
-  type Doc = { id: string; name: string; link: string; createdAt: number };
-
-  const [documents, setDocuments] = useState<Doc[]>(() => {
-    try { return JSON.parse(window.localStorage.getItem('documents') || '[]'); } catch { return []; }
-  });
-  const [docForm, setDocForm] = useState({ name: '', link: '' });
-  const [viewDoc, setViewDoc] = useState<Doc | null>(null);
-  const [isDocModalOpen, setIsDocModalOpen] = useState(false);
-
   // Review chapters management (admin can create/update chapters used by ReviewPage)
   interface ReviewChapter { id: number; title: string; topic: string; detail?: string; questionIds?: number[] }
 
@@ -168,36 +158,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({ questions, setQuestions, c
     });
     saveReviewChapters(updatedRc);
     toast.success('Đã đồng bộ số lượng câu hỏi vào các chương Ôn Tập!');
-  };
-
-  const saveDocs = (docs: Doc[]) => {
-    setDocuments(docs);
-    window.localStorage.setItem('documents', JSON.stringify(docs));
-  };
-
-  const handleUploadDoc = () => {
-    if (!docForm.name.trim() || !docForm.link.trim()) { toast.error('Nhập tên và link tài liệu'); return; }
-    const newDoc: Doc = { id: Math.random().toString(36).slice(2, 9), name: docForm.name.trim(), link: docForm.link.trim(), createdAt: Date.now() };
-    saveDocs([...documents, newDoc]);
-    setDocForm({ name: '', link: '' });
-    setIsDocModalOpen(false);
-    toast.success('Đã thêm tài liệu');
-  };
-
-  const handleDeleteDoc = (id: string) => {
-    if (!confirm('Bạn có chắc chắn muốn xóa tài liệu này?')) return;
-    saveDocs(documents.filter(d => d.id !== id));
-    toast.success('Đã xóa tài liệu');
-  };
-
-  const handleDownloadDoc = (link: string, name: string) => {
-    const a = document.createElement('a');
-    a.href = link;
-    a.download = name;
-    a.target = '_blank';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
   };
 
   // Admin: fetch questions from remote API and merge/replace local questions
@@ -299,8 +259,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ questions, setQuestions, c
     }
   };
 
-  const handleViewDoc = (doc: Doc) => setViewDoc(doc);
-  const closeView = () => setViewDoc(null);
+
 
   return (
     <>
@@ -317,7 +276,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({ questions, setQuestions, c
           {[
             { id: 'questions', label: 'Ngân hàng câu hỏi', icon: BookOpen },
             { id: 'exams', label: 'Quản lý đề thi', icon: FileEdit },
-            { id: 'docs', label: 'Tài liệu', icon: FileText },
             { id: 'settings', label: 'Cài đặt', icon: Settings },
           ].map((item) => (
             <button
@@ -571,105 +529,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({ questions, setQuestions, c
               </motion.div>
             )}
 
-            {/* Documents Section */}
-            {adminTab === 'docs' && (
-              <motion.section 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden"
-              >
-                <div className="p-6 sm:p-8 border-b border-gray-100 bg-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
-                      <FileText size={24} />
-                    </div>
-                    <div>
-                      <h2 className="text-2xl font-bold text-gray-900">Quản Lý Tài Liệu</h2>
-                      <p className="text-sm text-gray-500 mt-1">Quản lý {documents.length} tài liệu học tập</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-6 sm:p-8 bg-gray-50/50">
-                  {/* Upload */}
-                  <div className="flex justify-center mb-6">
-                    <button
-                      onClick={() => setIsDocModalOpen(true)}
-                      className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl shadow-sm transition-transform transform hover:scale-105"
-                    >
-                      <Plus size={18} />
-                      Thêm Tài Liệu
-                    </button>
-                  </div>
-
-                  {/* Document List */}
-                  <div className="grid grid-cols-1 gap-4">
-                    <AnimatePresence>
-                      {documents.length === 0 ? (
-                        <motion.div 
-                          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                          className="text-center py-16 text-gray-400 bg-white rounded-2xl border-2 border-dashed border-gray-200"
-                        >
-                          <FileText className="mx-auto h-12 w-12 text-gray-300 mb-4" />
-                          <p className="text-lg font-medium text-gray-900">Chưa có tài liệu nào</p>
-                          <p className="mt-1 text-gray-500">Hãy thêm tài liệu mới để học viên có thể tải xuống.</p>
-                        </motion.div>
-                      ) : (
-                        documents.map(d => (
-                          <motion.div
-                            key={d.id}
-                            layout
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md hover:border-blue-200 transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 group"
-                          >
-                            <div className="flex items-start gap-4 min-w-0 flex-1">
-                              <div className="p-3 bg-blue-50 text-blue-600 rounded-xl group-hover:bg-blue-600 group-hover:text-white transition-colors shrink-0">
-                                <FileText size={24} />
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <h3 className="font-semibold text-lg text-gray-900 truncate group-hover:text-blue-600 transition-colors">{d.name}</h3>
-                                <p className="text-sm text-gray-500 truncate mt-1">{d.link}</p>
-                                <div className="text-xs text-gray-400 mt-2">Đăng lúc: {new Date(d.createdAt).toLocaleString('vi-VN')}</div>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-2 w-full sm:w-auto justify-end border-t sm:border-t-0 pt-4 sm:pt-0 border-gray-100">
-                              <button
-                                onClick={() => handleDownloadDoc(d.link, d.name)}
-                                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors"
-                                title="Tải xuống"
-                              >
-                                <Download size={16} />
-                                <span className="sm:hidden">Tải xuống</span>
-                              </button>
-                              <button
-                                onClick={() => handleViewDoc(d)}
-                                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors"
-                                title="Xem"
-                              >
-                                <Eye size={16} />
-                                <span className="sm:hidden">Xem</span>
-                              </button>
-                              <button
-                                onClick={() => handleDeleteDoc(d.id)}
-                                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition-colors"
-                                title="Xóa"
-                              >
-                                <Trash2 size={16} />
-                                <span className="sm:hidden">Xóa</span>
-                              </button>
-                            </div>
-                          </motion.div>
-                        ))
-                      )}
-                    </AnimatePresence>
-                  </div>
-                </div>
-              </motion.section>
-            )}
           </div> {/* End .space-y-6 */}
         </div> {/* End .max-w-6xl */}
       </main>
@@ -881,90 +740,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ questions, setQuestions, c
         </motion.div>
       )}
       </AnimatePresence>
-      {/* Document Viewer Modal */}
-      <AnimatePresence>
-      {viewDoc && (
-        <motion.div 
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-gray-900/80 backdrop-blur-sm"
-        >
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="bg-white w-full max-w-5xl h-[85vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col"
-          >
-            <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 shrink-0">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="p-2 bg-blue-100 text-blue-600 rounded-lg">
-                  <FileText size={20} />
-                </div>
-                <h3 className="font-semibold text-gray-900 truncate">{viewDoc.name}</h3>
-              </div>
-              <div className="flex items-center gap-2 shrink-0 ml-4">
-                <button 
-                  onClick={() => handleDownloadDoc(viewDoc.link, viewDoc.name)} 
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors"
-                >
-                  <Download size={16} />
-                  <span className="hidden sm:inline">Tải xuống</span>
-                </button>
-                <button onClick={closeView} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-colors">
-                  <X size={20} />
-                </button>
-              </div>
-            </div>
-            <div className="flex-1 bg-gray-100 p-2 sm:p-4">
-              <iframe src={viewDoc.link} className="w-full h-full rounded-xl bg-white shadow-sm border border-gray-200" title={viewDoc.name} />
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-      </AnimatePresence>
-
-      {/* Add Document Modal */}
-      <AnimatePresence>
-        {isDocModalOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm"
-          >
-            <motion.div
-              initial={{ scale: 0.98, opacity: 0, y: 10 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.98, opacity: 0, y: 10 }}
-              className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden"
-            >
-              <div className="p-4 border-b border-gray-100 flex justify-between items-center">
-                <h3 className="font-semibold text-lg">Thêm tài liệu</h3>
-                <button onClick={() => setIsDocModalOpen(false)} className="p-2 text-gray-400 hover:text-gray-600 rounded-lg">
-                  <X size={18} />
-                </button>
-              </div>
-              <div className="p-6 space-y-4">
-                <div>
-                  <label className="block text-sm text-gray-600 mb-2">Tên tài liệu</label>
-                  <input value={docForm.name} onChange={(e) => setDocForm({ ...docForm, name: e.target.value })} placeholder="Tên tài liệu..." className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-600 mb-2">Link tài liệu</label>
-                  <input value={docForm.link} onChange={(e) => setDocForm({ ...docForm, link: e.target.value })} placeholder="https://..." className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
-                </div>
-                <div className="flex justify-end gap-3 pt-2">
-                  <button onClick={() => { setDocForm({ name: '', link: '' }); setIsDocModalOpen(false); }} className="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200">Hủy</button>
-                  <button onClick={handleUploadDoc} className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-2">
-                    <Plus size={16} />
-                    Đăng
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-        {/* Review Chapter Edit Modal */}
+      {/* Review Chapter Edit Modal */}
         <AnimatePresence>
           {isReviewModalOpen && editingReview && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">
