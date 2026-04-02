@@ -9,18 +9,34 @@ export const DocumentsPage: React.FC = () => {
   const [viewDoc, setViewDoc] = useState<Doc | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Danh sách các tài liệu cứng có sẵn trong thư mục /public/docs/ (hoặc /docs/ khi build)
+  const STATIC_DOCS: Doc[] = [
+    {
+      id: 'doc-600-cau-hoi',
+      name: 'Bộ 600 câu hỏi dùng cho sát hạch lái xe cơ giới đường bộ',
+      link: '/docs/273963059_Bộ 600 câu hỏi dùng cho sát hạch lái xe cơ giới đường bộ.pdf',
+      createdAt: new Date('2024-01-01').getTime()
+    }
+    // Bạn có thể thêm các file khác vào đây...
+  ];
+
   useEffect(() => {
     try {
       const raw = typeof window !== 'undefined' ? window.localStorage.getItem('documents') : null;
-      if (!raw) {
-        setDocuments([]);
-        return;
+      let parsedDocs: Doc[] = [];
+      
+      if (raw) {
+        const parsed = JSON.parse(raw) as Doc[];
+        if (Array.isArray(parsed)) {
+          parsedDocs = parsed;
+        }
       }
-      const parsed = JSON.parse(raw) as Doc[];
-      setDocuments(Array.isArray(parsed) ? parsed : []);
+      
+      // Kết hợp tài liệu cứng và tài liệu thêm từ localStorage (nếu có để quản trị)
+      setDocuments([...STATIC_DOCS, ...parsedDocs]);
     } catch (err) {
       console.error('Failed to load documents from localStorage', err);
-      setDocuments([]);
+      setDocuments([...STATIC_DOCS]);
     }
   }, []);
 
