@@ -308,12 +308,82 @@ export const ThiPage: React.FC<ThiPageProps> = ({ isAuthenticated, onShowAuth, o
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
           {/* Card Thi Thử */}
           <button 
-            onClick={() => {
+            onClick={async () => {
+              try {
+                const res = await fetch(url + 'api/CauHoi/NgauNhien?SoLuong=30');
+                if (res.ok) {
+                  let rawData = await res.json();
+                  
+                  if (Array.isArray(rawData) && rawData.length === 1 && (rawData[0].questions || rawData[0].cauHois)) {
+                    rawData = rawData[0];
+                  }
+
+                  let dataQ: any[] = [];
+                  if (rawData && Array.isArray(rawData.questions)) {
+                    dataQ = rawData.questions;
+                  } else if (rawData && Array.isArray(rawData.cauHois)) {
+                    dataQ = rawData.cauHois;
+                  } else if (rawData && Array.isArray(rawData.data)) {
+                    dataQ = rawData.data;
+                  } else if (rawData && Array.isArray(rawData.items)) {
+                    dataQ = rawData.items;
+                  } else if (Array.isArray(rawData)) {
+                    rawData.forEach((item: any) => {
+                      if (item && typeof item === 'object' && Array.isArray(item.questions)) dataQ.push(...item.questions);
+                      else if (item && typeof item === 'object' && Array.isArray(item.cauHois)) dataQ.push(...item.cauHois);
+                      else dataQ.push(item);
+                    });
+                  }
+                  
+                  if (dataQ.length > 0) {
+                    const mapped: Question[] = dataQ.map((q: any) => {
+                      const options = Array.isArray(q.answers) ? q.answers.map((a: any) => a?.answerContent ?? String(a)) : [];
+                      let correctIndex = 0;
+                      if (Array.isArray(q.answers)) {
+                        const idx = q.answers.findIndex((a: any) => a && a.isCorrect === true);
+                        if (idx !== -1) correctIndex = idx;
+                      }
+
+                      let chapterId = 1;
+                      if (Array.isArray(q.categories) && q.categories.length > 0) {
+                        chapterId = Number(q.categories[0].id || q.categories[0]); 
+                      }
+
+                      return {
+                        id: `api-random-${String(q.id)}`,
+                        content: q.questionContent ?? '',
+                        options,
+                        correctAnswer: Math.max(0, Math.min(correctIndex, options.length - 1)),
+                        chapterId,
+                        isParalysis: !!q.isCritical,
+                        imageUrl: q.imageUrl ?? '',
+                        explanation: q.explanation ?? '',
+                      } as Question;
+                    });
+
+                    let timeSeconds = rawData.duration ? rawData.duration * 60 : 22 * 60;
+                    let passCount = rawData.questionCount ? Math.floor(rawData.questionCount * 0.9) : 27;
+
+                    setExamQuestions(mapped);
+                    setExamConfig({ timeSeconds, passCount, paralysisMandatory: true });
+                    setSelectedExam({ 
+                      title: "Thi Thử Ngẫu Nhiên", 
+                      topic: `Thời gian: ${timeSeconds/60} phút - ${mapped.length} câu hỏi` 
+                    });
+                    return;
+                  }
+                }
+              } catch (err) {
+                console.error('Failed to fetch random questions from API', err);
+              }
+
+              // Fallback nếu API lỗi hoặc không trả về dữ liệu câu hỏi
               const shuffled = [...allQuestions].sort(() => 0.5 - Math.random());
-              setExamQuestions(shuffled.slice(0, 35));
+              setExamQuestions(shuffled.slice(0, 30));
+              setExamConfig({ timeSeconds: 22 * 60, passCount: 27, paralysisMandatory: true });
               setSelectedExam({ 
                 title: "Thi Thử Ngẫu Nhiên", 
-                topic: "Hệ thống sẽ tạo đề thi ngẫu nhiên dựa trên cấu trúc đề thi chuẩn của Bộ GTVT" 
+                topic: "Thời gian: 22 phút - 30 câu hỏi (Sinh tự động)" 
               });
             }}
             className="bg-gradient-to-br from-blue-600 to-blue-500 rounded-2xl p-8 text-white shadow-lg hover:shadow-blue-500/40 transform hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group text-left"
