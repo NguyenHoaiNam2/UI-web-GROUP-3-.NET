@@ -22,7 +22,6 @@ import { Chapter, CHAPTERS } from '@/app/types'; // Ensure Chapter and CHAPTERS 
 
 import CallPopup from "./components/CallPopup";
 import { url } from '../env.js';
-import { useSignalR } from "./hooks/useSignalR";
 
 // Định nghĩa các trang chính
 type PageKey = 'HOME' | 'INTRO' | 'THI' | 'REVIEW' | 'CONSULTATION' | 'DOCS' | 'PROFILE' | 'HISTORY' | 'PRIVACY' | 'CONTACT' | 'ADMIN';
@@ -42,7 +41,6 @@ const PAGES: Record<PageKey, string> = {
 };
 
 const App = () => {
-  useSignalR();
   //Quản lý popup video call
   const [showCall, setShowCall] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
