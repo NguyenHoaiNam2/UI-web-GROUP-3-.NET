@@ -3,6 +3,7 @@ import { PlayCircle, ArrowLeft, Car, Truck, Bike, History, Star, AlertCircle } f
 import { QuizGame } from './QuizGame';
 import { toast } from 'sonner';
 import { Question, Chapter } from '@/app/types';
+import { url } from '../../env.js';
 
 // Danh sách các bằng lái
 const LICENSE_TYPES = [
@@ -100,125 +101,101 @@ export const ThiPage: React.FC<ThiPageProps> = ({ isAuthenticated, onShowAuth, o
   };
 
   // Helper: Create and start exam for a specific license
-  const handleStartExamByLicense = (license: typeof LICENSE_TYPES[0]) => {
-    // Helper: Fisher-Yates shuffle
-    const shuffle = <T,>(arr: T[]) => {
-      const a = [...arr];
-      for (let i = a.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [a[i], a[j]] = [a[j], a[i]];
-      }
-      return a;
-    };
-
-    if (license.code === 'B1') {
-      const desired: Record<number, number> = {
-        1: 9,
-        3: 1,
-        4: 1,
-        5: 1,
-        6: 9,
-        7: 9,
-      };
-
-      const selected: Question[] = [];
-      const usedIds = new Set<string>();
-      let needParalysis = true;
-
-      for (const chapStr of Object.keys(desired)) {
-        const chap = Number(chapStr);
-        const want = desired[chap];
-        const pool = shuffle(allQuestions.filter(q => q.chapterId === chap && !usedIds.has(q.id)));
-
-        if (needParalysis) {
-          const paralysisIdx = pool.findIndex(q => q.isParalysis);
-          if (paralysisIdx !== -1) {
-            const pq = pool.splice(paralysisIdx, 1)[0];
-            selected.push(pq);
-            usedIds.add(pq.id);
-            needParalysis = false;
-          }
+  const handleStartExamByLicense = async (license: typeof LICENSE_TYPES[0]) => {
+    try {
+      // Thêm đuôi TEST vào mã bằng theo cấu trúc backend mới (VD: C -> CTEST, B1 -> B1TEST)
+      const apiCode = license.code + 'TEST'; 
+      const res = await fetch(url + 'api/CauHoi/CauTruc?BangLai=' + apiCode);
+      
+      if (res.ok) {
+        let rawData = await res.json();
+        console.log("API CauTruc Response cho", apiCode, ":", rawData);
+        
+        // Đề phòng trường hợp API trả về mảng 1 phần tử bọc lấy object chính (vd: `[{ questions: [...] }]`)
+        if (Array.isArray(rawData) && rawData.length === 1 && (rawData[0].questions || rawData[0].cauHois)) {
+          rawData = rawData[0];
         }
 
-        for (let i = 0; i < want && pool.length > 0; i++) {
-          const q = pool.shift()!;
-          if (!usedIds.has(q.id)) {
-            selected.push(q);
-            usedIds.add(q.id);
-          } else {
-            i--;
-          }
+        let dataQ: any[] = [];
+        if (rawData && Array.isArray(rawData.questions)) {
+          dataQ = rawData.questions;
+        } else if (rawData && Array.isArray(rawData.cauHois)) {
+          dataQ = rawData.cauHois;
+        } else if (rawData && Array.isArray(rawData.data)) {
+          dataQ = rawData.data;
+        } else if (rawData && Array.isArray(rawData.items)) {
+          dataQ = rawData.items;
+        } else if (Array.isArray(rawData)) {
+          // Quét và Flatten (làm phẳng) nếu API rải rác mảng lồng nhau
+          rawData.forEach((item: any) => {
+            if (item && typeof item === 'object' && Array.isArray(item.questions)) dataQ.push(...item.questions);
+            else if (item && typeof item === 'object' && Array.isArray(item.cauHois)) dataQ.push(...item.cauHois);
+            else dataQ.push(item);
+          });
         }
-      }
-
-      if (needParalysis) {
-        const globalPar = allQuestions.find(q => q.isParalysis && !usedIds.has(q.id));
-        if (globalPar) {
-          const replaceIdx = selected.findIndex(q => !q.isParalysis);
-          if (replaceIdx !== -1) {
-            usedIds.delete(selected[replaceIdx].id);
-            selected[replaceIdx] = globalPar;
-            usedIds.add(globalPar.id);
-            needParalysis = false;
-          } else {
-            selected.push(globalPar);
-            usedIds.add(globalPar.id);
-            needParalysis = false;
-          }
-        }
-      }
-
-      const shortages: number[] = [];
-      for (const chapStr of Object.keys(desired)) {
-        const chap = Number(chapStr);
-        const got = selected.filter(q => q.chapterId === chap).length;
-        if (got < desired[chap]) shortages.push(chap);
-      }
-
-      if (shortages.length > 0) {
-        const chapNames = shortages.map(c => `Chương ${c}`).join(', ');
-        toast.warning(`Không đủ câu cho: ${chapNames}. Đề sẽ có ${selected.length} câu.`);
-      }
-
-      let finalSelected = selected.slice(0, 30);
-
-      const paralysisCount = finalSelected.filter(q => q.isParalysis).length;
-      if (paralysisCount === 0) {
-        const globalPar2 = allQuestions.find(q => q.isParalysis && !finalSelected.some(f => f.id === q.id));
-        if (globalPar2) {
-          const replaceIdx = finalSelected.findIndex(q => !q.isParalysis);
-          if (replaceIdx !== -1) finalSelected[replaceIdx] = globalPar2;
-        }
-      } else if (paralysisCount > 1) {
-        let keepOne = false;
-        for (let i = finalSelected.length - 1; i >= 0; i--) {
-          if (finalSelected[i].isParalysis) {
-            if (!keepOne) {
-              keepOne = true;
-              continue;
+        
+        if (dataQ.length > 0) {
+          const mapped: Question[] = dataQ.map((q: any) => {
+            const options = Array.isArray(q.answers) ? q.answers.map((a: any) => a?.answerContent ?? String(a)) : [];
+            let correctIndex = 0;
+            if (Array.isArray(q.answers)) {
+              const idx = q.answers.findIndex((a: any) => a && a.isCorrect === true);
+              if (idx !== -1) correctIndex = idx;
             }
-            const replacement = allQuestions.find(q => !q.isParalysis && !finalSelected.some(f => f.id === q.id));
-            if (replacement) finalSelected[i] = replacement;
+
+            let chapterId = 1;
+            if (Array.isArray(q.categories) && q.categories.length > 0) {
+              chapterId = Number(q.categories[0].id || q.categories[0]); // handles object or number
+            }
+
+            return {
+              id: `api-${String(q.id)}`,
+              content: q.questionContent ?? '',
+              options,
+              correctAnswer: Math.max(0, Math.min(correctIndex, options.length - 1)),
+              chapterId,
+              isParalysis: !!q.isCritical,
+              imageUrl: q.imageUrl ?? '',
+              explanation: q.explanation ?? '',
+            } as Question;
+          });
+
+          // Determine time and passCount. Dùng dữ liệu từ API nếu có, không thì dùng fallback mặc định.
+          let timeSeconds = rawData.duration ? rawData.duration * 60 : 22 * 60;
+          let passCount = rawData.questionCount ? Math.floor(rawData.questionCount * 0.9) : 31;
+          
+          if (!rawData.duration) {
+            if (license.code === 'B1') { timeSeconds = 20 * 60; passCount = 27; }
+            else if (license.code === 'B2') { timeSeconds = 22 * 60; passCount = 32; }
+            else if (license.code === 'C') { timeSeconds = 24 * 60; passCount = 36; }
+            else if (['D', 'E', 'F'].includes(license.code)) { timeSeconds = 26 * 60; passCount = 41; }
+            else { passCount = Math.floor(mapped.length * 0.9); }
           }
+
+          setExamQuestions(mapped);
+          setExamConfig({ timeSeconds, passCount, paralysisMandatory: true });
+          setSelectedExam({ 
+            title: `${license.code} - Thi Sát Hạch`, 
+            topic: `Thời gian: ${timeSeconds/60} phút - ${mapped.length} câu hỏi` 
+          });
+          return;
+        } else {
+          console.warn(`API trả về 0 câu hỏi hoặc sai định dạng cho hạng ${license.code}.`);
+          toast.warning(`Chưa có đề thi trên hệ thống cho bằng ${license.code}.`);
+          
+          setExamQuestions([]);
+          setExamConfig({ timeSeconds: 22 * 60, passCount: 0, paralysisMandatory: false });
+          setSelectedExam({ 
+            title: `${license.code} - Thi Sát Hạch`, 
+            topic: `Chưa có dữ liệu câu hỏi` 
+          });
+          return;
         }
       }
-
-      finalSelected = shuffle(finalSelected);
-
-      setExamQuestions(finalSelected);
-      setExamConfig({ timeSeconds: 20 * 60, passCount: 27, paralysisMandatory: true });
-      setSelectedExam({ 
-        title: `${license.code} - Thi Sát Hạch`, 
-        topic: `Thời gian: 20 phút - 30 câu hỏi` 
-      });
-    } else {
-      const shuffled = [...allQuestions].sort(() => 0.5 - Math.random());
-      setExamQuestions(shuffled.slice(0, 35));
-      setExamConfig(null);
-      setSelectedExam({ 
-        title: `${license.code} - Thi Sát Hạch`, 
-        topic: `Thời gian: 22 phút - 35 câu hỏi` 
-      });
+    } catch(err) {
+      console.error('Failed to fetch structural questions', err);
+      toast.error('Lỗi kết nối đến máy chủ lấy đề thi!');
+      return;
     }
   };
 
@@ -232,7 +209,7 @@ export const ThiPage: React.FC<ThiPageProps> = ({ isAuthenticated, onShowAuth, o
   // 1. Màn hình chi tiết bài thi (Dashboard Layout)
   if (selectedExam) {
     return (
-      <div className="flex-1 flex flex-col bg-white animate-fade-in relative min-h-screen">
+      <div className="fixed inset-0 z-[100] flex flex-col bg-white animate-fade-in overflow-hidden">
         {/* Main Header / Topbar */}
         <div className="flex items-center justify-between px-6 py-4 bg-blue-600 border-b border-blue-700 z-20">
           <div className="flex items-center gap-4">

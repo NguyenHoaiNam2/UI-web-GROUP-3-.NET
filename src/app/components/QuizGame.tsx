@@ -35,14 +35,15 @@ export const QuizGame: React.FC<QuizGameProps> = ({ examTitle, questions, onExit
   const [showResult, setShowResult] = useState(!!startShowResult);
   const [showResultStep, setShowResultStep] = useState(false);
   const [timeElapsed, setTimeElapsed] = useState(0);
+  const [focusedOptionIndex, setFocusedOptionIndex] = useState<number | null>(null);
 
   // If no questions are provided, show loading state
   if (!questions || questions.length === 0) {
     return (
       <div className="w-full h-96 flex flex-col items-center justify-center bg-white rounded-2xl shadow-xl p-8">
-        <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-4" />
-        <h3 className="text-xl font-bold text-gray-800">Đang tải câu hỏi...</h3>
-        <p className="text-gray-500 mt-2">Vui lòng đợi trong giây lát.</p>
+        <AlertTriangle className="w-12 h-12 text-yellow-500 mb-4" />
+        <h3 className="text-xl font-bold text-gray-800">Chưa có câu hỏi</h3>
+        <p className="text-gray-500 mt-2">Đề thi này hiện tại chưa có dữ liệu câu hỏi.</p>
         <button 
           onClick={onExit}
           className="mt-6 px-6 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors"
@@ -93,6 +94,74 @@ export const QuizGame: React.FC<QuizGameProps> = ({ examTitle, questions, onExit
       }
     };
   }, []);
+
+  // Reset focus when question changes
+  useEffect(() => {
+    setFocusedOptionIndex(null);
+  }, [currentQuestionIndex]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    if (showResult || readonly) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if typing in input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      switch (e.key) {
+        case 'ArrowLeft':
+          e.preventDefault();
+          if (autoAdvanceTimer.current) {
+            clearTimeout(autoAdvanceTimer.current);
+            autoAdvanceTimer.current = null;
+          }
+          if (currentQuestionIndex > 0) {
+            setCurrentQuestionIndex(prev => prev - 1);
+          }
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          if (autoAdvanceTimer.current) {
+            clearTimeout(autoAdvanceTimer.current);
+            autoAdvanceTimer.current = null;
+          }
+          if (currentQuestionIndex < totalQuestions - 1) {
+            setCurrentQuestionIndex(prev => prev + 1);
+          }
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          setFocusedOptionIndex(prev => {
+            if (prev === null) return currentQuestion.options.length - 1;
+            return prev > 0 ? prev - 1 : currentQuestion.options.length - 1;
+          });
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          setFocusedOptionIndex(prev => {
+            if (prev === null) return 0;
+            return prev < currentQuestion.options.length - 1 ? prev + 1 : 0;
+          });
+          break;
+        case 'Enter':
+        case ' ': // Space
+          if (focusedOptionIndex !== null && e.target === document.body) {
+            e.preventDefault();
+            handleSelectAnswer(focusedOptionIndex);
+          } else if (focusedOptionIndex !== null && document.activeElement instanceof HTMLElement) {
+             // If a button is focused natively, we might trigger twice if we're not careful.
+             // Usually it's fine, but let's just make sure Space on a button clicks it anyway natively.
+             if (e.key === ' ' && document.activeElement.tagName === 'BUTTON') return;
+             e.preventDefault();
+             handleSelectAnswer(focusedOptionIndex);
+          }
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showResult, readonly, currentQuestionIndex, totalQuestions, currentQuestion, focusedOptionIndex]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -414,6 +483,10 @@ export const QuizGame: React.FC<QuizGameProps> = ({ examTitle, questions, onExit
 
                     let optionClass = 'w-full text-left p-4 md:p-5 rounded-xl border transition-all duration-200 flex items-start gap-4 group ';
                     
+                    if (focusedOptionIndex === index) {
+                      optionClass += 'ring-2 ring-blue-500 ring-offset-2 scale-[1.02] '; // Visual indicator for keyboard focus
+                    }
+
                     if (isAnswered && showImmediateExplanation) {
                       if (isOptCorrect) {
                         optionClass += 'bg-green-50 border-green-500 text-green-800 shadow-md';
