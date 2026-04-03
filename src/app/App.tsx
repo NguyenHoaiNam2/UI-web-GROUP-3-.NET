@@ -445,11 +445,10 @@ const App = () => {
             </div>
           );
 
-          //return <ConsultationUserPage setShowCall={setShowCall} />;
-          //return <ConsultationAdminPage />;
         }
         if (userRole === 'ADMIN') {
-          return <ConsultationAdminPage />;
+          return <ConsultationAdminPage 
+            setShowCall={setShowCall}/>;
         }
         return (
           <ConsultationUserPage

@@ -1,6 +1,11 @@
 import React, { useEffect, useState } from "react";
 import * as signalR from "@microsoft/signalr";
-import { url } from '../../env.js'
+import { url } from "../../env.js";
+
+
+interface ConsultationAdminPageProps {
+  setShowCall: (v: boolean) => void;
+}
 
 interface User {
   userId: string;
@@ -9,10 +14,21 @@ interface User {
   isCalling: boolean;
 }
 
-export const ConsultationAdminPage: React.FC = () => {
+export const ConsultationAdminPage: React.FC<ConsultationAdminPageProps> = ({ setShowCall }) => {
   const [connection, setConnection] = useState<signalR.HubConnection | null>(null);
   const [isOnline, setIsOnline] = useState(true);
   const [users, setUsers] = useState<User[]>([]);
+  const [meCalling, setMeCalling] = useState(false);
+
+  const [incomingCall, setIncomingCall] = useState<any>(null);
+  const [isRinging, setIsRinging] = useState(false);
+
+  // 🔊 audio (chỉ tạo 1 lần)
+  const [audio] = useState(() => {
+    const a = new Audio("/ring.mp3");
+    a.loop = true;
+    return a;
+  });
 
   // Banner
   const banners = [
@@ -28,11 +44,10 @@ export const ConsultationAdminPage: React.FC = () => {
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % banners.length);
     }, 3000);
-
     return () => clearInterval(interval);
   }, []);
 
-  // Tạo connection
+  // 🔌 tạo connection
   useEffect(() => {
     const newConnection = new signalR.HubConnectionBuilder()
       .withUrl(url + "consultationHub", {
@@ -44,7 +59,7 @@ export const ConsultationAdminPage: React.FC = () => {
     setConnection(newConnection);
   }, []);
 
-  // Start connection + nhận realtime
+  // 🚀 start connection + events
   useEffect(() => {
     if (!connection) return;
 
@@ -52,12 +67,36 @@ export const ConsultationAdminPage: React.FC = () => {
       .then(() => {
         console.log("✅ SignalR connected");
 
-        // nhận danh sách online
+        // danh sách online
         connection.on("ReceiveOnlineUsers", (data: User[]) => {
           setUsers(data);
         });
 
-        // đăng ký online
+        // incoming call
+        connection.on("IncomingCall", (data) => {
+          setIncomingCall(data);
+          setIsRinging(true);
+          audio.play();
+        });
+
+        connection.on("CallAccepted", () => {
+          setShowCall(true);
+        });
+
+        connection.on("CallRejected", () => {
+          audio.pause();
+          setIsRinging(false);
+          setMeCalling(false);
+        });
+
+        connection.on("CallTimeout", () => {
+          alert("⏳ Không có phản hồi");
+          audio.pause();
+          setIncomingCall(null);
+          setIsRinging(false);
+          setMeCalling(false);
+        });
+
         if (isOnline) {
           connection.invoke("Register");
         }
@@ -69,9 +108,11 @@ export const ConsultationAdminPage: React.FC = () => {
     };
   }, [connection]);
 
-  // Toggle online/offline
+  // 🔄 toggle online
   useEffect(() => {
     if (!connection) return;
+
+    if (connection.state !== "Connected") return;
 
     if (isOnline) {
       connection.invoke("Register");
@@ -81,13 +122,38 @@ export const ConsultationAdminPage: React.FC = () => {
     }
   }, [isOnline]);
 
-  //  Gọi user
+  // 📞 gọi
   const handleCall = async (user: User) => {
     if (!connection) return;
 
-    await connection.invoke("SetCalling", true);
+    setMeCalling(true);
+    await connection.invoke("CallUser", user.userId);
+  };
 
-    alert(`📞 Gọi đến ${user.name}`);
+  // ✅ nhận
+  const handleAccept = async () => {
+    if (!connection || !incomingCall) return;
+
+    audio.pause();
+    setIsRinging(false);
+
+    await connection.invoke("AcceptCall", incomingCall.fromUserId);
+
+    setIncomingCall(null);
+    setShowCall(true);
+  };
+
+  // ❌ từ chối
+  const handleReject = async () => {
+    if (!connection || !incomingCall) return;
+
+    audio.pause();
+    setIsRinging(false);
+
+    await connection.invoke("RejectCall", incomingCall.fromUserId);
+
+    setIncomingCall(null);
+    setMeCalling(false);
   };
 
   return (
@@ -100,20 +166,7 @@ export const ConsultationAdminPage: React.FC = () => {
         </h1>
 
         <div className="flex items-center gap-3">
-
-          {/* STATUS DOT */}
-          <div className="relative w-4 h-4">
-            {isOnline && (
-              <span className="absolute w-4 h-4 rounded-full bg-green-400 opacity-40 animate-ping"></span>
-            )}
-            <div className={`w-4 h-4 rounded-full ${isOnline ? "bg-green-500" : "bg-gray-400"}`} />
-          </div>
-          <div className="relative w-4 h-4">
-            {isOnline && (
-              <span className="absolute w-4 h-4 rounded-full bg-green-400 opacity-40 animate-ping"></span>
-            )}
-            <div className={`w-4 h-4 rounded-full ${isOnline ? "bg-green-500" : "bg-gray-400"}`} />
-          </div>
+          {/* DOT */}
           <div className="relative w-4 h-4">
             {isOnline && (
               <span className="absolute w-4 h-4 rounded-full bg-green-400 opacity-40 animate-ping"></span>
@@ -124,8 +177,7 @@ export const ConsultationAdminPage: React.FC = () => {
           {/* BUTTON */}
           <button
             onClick={() => setIsOnline(!isOnline)}
-            className={`w-24 h-10 flex items-center justify-center rounded-xl text-white font-semibold transition ${isOnline ? "bg-green-500" : "bg-gray-400"
-              }`}
+            className={`w-24 h-10 rounded-xl text-white font-semibold ${isOnline ? "bg-green-500" : "bg-gray-400"}`}
           >
             {isOnline ? "Online" : "Offline"}
           </button>
@@ -138,38 +190,37 @@ export const ConsultationAdminPage: React.FC = () => {
         {/* LEFT */}
         <div className="w-1/3 bg-white rounded-2xl shadow p-4 flex flex-col">
           <h2 className="text-lg font-semibold mb-4">
-            Danh sách người dùng đang online
+            Danh sách người dùng
           </h2>
 
           <div className="flex-1 overflow-auto">
             {!isOnline ? (
-              <div className="text-gray-500 text-center mt-10">
-                Bạn đang ngoại tuyến
+              <div className="text-center text-gray-500 mt-10">
+                Bạn đang offline
               </div>
             ) : users.length === 0 ? (
-              <div className="text-gray-500 text-center mt-10">
-                Không có người dùng trực tuyến
+              <div className="text-center text-gray-500 mt-10">
+                Không có người online
               </div>
             ) : (
               users.map((user) => (
-                <div
-                  key={user.userId}
-                  className="flex justify-between items-center p-3 border-b"
-                >
-                  <div className="flex flex-col">
-                    <span>{user.name}</span>
+                <div key={user.userId} className="flex justify-between items-center p-3 border-b">
+                  <div>
+                    <div>{user.name}</div>
                     {user.isCalling && (
-                      <span className="text-xs text-red-500">
-                        Đang gọi...
-                      </span>
+                      <div className="text-xs text-red-500">Đang bận</div>
                     )}
                   </div>
 
                   <button
+                    disabled={user.isCalling || meCalling}
                     onClick={() => handleCall(user)}
-                    className="bg-blue-500 text-white px-3 py-1 rounded-lg hover:bg-blue-600"
+                    className={`px-3 py-1 rounded-lg text-white ${user.isCalling || meCalling
+                        ? "bg-gray-400 cursor-not-allowed"
+                        : "bg-blue-500 hover:bg-blue-600"
+                      }`}
                   >
-                    Gọi
+                    {user.isCalling || meCalling ? "Bận" : "Gọi"}
                   </button>
                 </div>
               ))
@@ -177,33 +228,40 @@ export const ConsultationAdminPage: React.FC = () => {
           </div>
         </div>
 
-        {/* RIGHT - BANNER */}
+        {/* RIGHT */}
         <div className="flex-1 bg-white rounded-2xl shadow p-4 flex flex-col items-center justify-center">
           <div className="relative w-full h-full overflow-hidden rounded-xl">
             {banners.map((img, index) => (
               <img
                 key={index}
                 src={img}
-                alt="banner"
                 className={`absolute w-full h-full object-cover transition-opacity duration-700 ${index === currentIndex ? "opacity-100" : "opacity-0"
-                  }`}
-              />
-            ))}
-          </div>
-
-          {/* DOTS */}
-          <div className="flex mt-4 gap-2">
-            {banners.map((_, index) => (
-              <div
-                key={index}
-                onClick={() => setCurrentIndex(index)}
-                className={`w-3 h-3 rounded-full cursor-pointer ${index === currentIndex ? "bg-blue-500" : "bg-gray-300"
                   }`}
               />
             ))}
           </div>
         </div>
       </div>
+
+      {/* 📞 POPUP */}
+      {incomingCall && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
+          <div className="bg-white p-6 rounded-2xl text-center w-80">
+            <h2 className="text-xl font-bold mb-2">📞 Cuộc gọi đến</h2>
+            <p>{incomingCall.fromName} đang gọi...</p>
+
+            <div className="flex justify-center gap-4 mt-4">
+              <button onClick={handleAccept} className="bg-green-500 text-white px-4 py-2 rounded">
+                Nhận
+              </button>
+
+              <button onClick={handleReject} className="bg-red-500 text-white px-4 py-2 rounded">
+                Từ chối
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
