@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
-import * as signalR from "@microsoft/signalr";
-import { url } from "../../env.js";
 import ringSound from "../../assets/ring.mp3";
+import { getSignalRConnection } from "../../app/services/signalr";
 
 interface ConsultationUserPageProps {
   setShowCall: (v: boolean) => void;
@@ -15,8 +14,11 @@ interface User {
 }
 
 export const ConsultationUserPage: React.FC<ConsultationUserPageProps> = ({ setShowCall }) => {
-  const [connection, setConnection] = useState<signalR.HubConnection | null>(null);
-  const [isOnline, setIsOnline] = useState(true);
+  const connection = getSignalRConnection();
+  const [isOnline, setIsOnline] = useState(() => {
+    const saved = localStorage.getItem("isOnline");
+    return saved !== null ? JSON.parse(saved) : true; // mặc định lần đầu = true
+  });
   const [users, setUsers] = useState<User[]>([]);
   const [meCalling, setMeCalling] = useState(false);
 
@@ -40,6 +42,11 @@ export const ConsultationUserPage: React.FC<ConsultationUserPageProps> = ({ setS
 
   const [currentIndex, setCurrentIndex] = useState(0);
 
+  //Lưu trạng thái online vào localStorage để reload trang không bị mất
+  useEffect(() => {
+    localStorage.setItem("isOnline", JSON.stringify(isOnline));
+  }, [isOnline]);
+
   // Auto slide
   useEffect(() => {
     const interval = setInterval(() => {
@@ -49,62 +56,54 @@ export const ConsultationUserPage: React.FC<ConsultationUserPageProps> = ({ setS
     return () => clearInterval(interval);
   }, []);
 
-  // 🔌 tạo connection
-  useEffect(() => {
-    const newConnection = new signalR.HubConnectionBuilder()
-      .withUrl(url + "consultationHub", {
-        accessTokenFactory: () => localStorage.getItem("accessToken") || ""
-      })
-      .withAutomaticReconnect()
-      .build();
-
-    setConnection(newConnection);
-  }, []);
-
   // 🚀 start + events
   useEffect(() => {
     if (!connection) return;
 
+    let isMounted = true;
+
     const start = async () => {
       try {
-        await connection.start();
-        console.log("✅ SignalR connected");
+        if (connection.state === "Disconnected") {
+          await connection.start();
+        }
 
-        connection.on("ReceiveOnlineUsers", (data: User[]) => {
-          setUsers(data);
-        });
+        connection.off("ReceiveOnlineUsers");
+        connection.off("IncomingCall");
+        connection.off("CallAccepted");
+        connection.off("CallRejected");
+        connection.off("CallTimeout");
+
+        connection.on("ReceiveOnlineUsers", setUsers);
 
         connection.on("IncomingCall", (data) => {
-          console.log("📞 IncomingCall");
+          if (!isMounted) return;
+
           setIncomingCall(data);
           setIsRinging(true);
-
-          audio.play().catch(err => console.log("Audio error:", err));
+          audio.play().catch(() => { });
         });
 
         connection.on("CallAccepted", () => {
-          console.log("✅ CallAccepted");
+          if (!isMounted) return;
           setShowCall(true);
         });
 
         connection.on("CallRejected", () => {
-          console.log("❌ CallRejected");
+          if (!isMounted) return;
 
           audio.pause();
           audio.currentTime = 0;
-
           setIsRinging(false);
           setMeCalling(false);
         });
 
         connection.on("CallTimeout", () => {
-          console.log("⏳ CallTimeout");
+          if (!isMounted) return;
 
           alert("⏳ Không có phản hồi");
-
           audio.pause();
           audio.currentTime = 0;
-
           setIncomingCall(null);
           setIsRinging(false);
           setMeCalling(false);
@@ -115,21 +114,20 @@ export const ConsultationUserPage: React.FC<ConsultationUserPageProps> = ({ setS
         }
 
       } catch (err) {
-        console.error("❌ SignalR error:", err);
+        console.error(err);
       }
     };
 
     start();
 
     return () => {
-      // 🔥 QUAN TRỌNG: remove tất cả listener
+      isMounted = false;
+
       connection.off("ReceiveOnlineUsers");
       connection.off("IncomingCall");
       connection.off("CallAccepted");
       connection.off("CallRejected");
       connection.off("CallTimeout");
-
-      connection.stop();
     };
 
   }, [connection]);
@@ -138,15 +136,43 @@ export const ConsultationUserPage: React.FC<ConsultationUserPageProps> = ({ setS
   useEffect(() => {
     if (!connection) return;
 
-    if (connection.state !== "Connected") return;
+    const run = async () => {
+      try {
+        // 🔥 chờ đến khi Connected
+        if (connection.state === "Disconnected") {
+          await connection.start();
+        }
 
-    if (isOnline) {
-      connection.invoke("Register");
-    } else {
-      connection.invoke("SetOffline");
-      setUsers([]);
-    }
-  }, [isOnline]);
+        // nếu đang connecting thì chờ
+        if (connection.state === "Connecting") {
+          await new Promise<void>((resolve) => {
+            const interval = setInterval(() => {
+              if (connection.state === "Connected") {
+                clearInterval(interval);
+                resolve();
+              }
+            }, 100);
+          });
+        }
+
+        // 🔥 lúc này đảm bảo Connected
+        if (isOnline) {
+          await connection.invoke("Register");
+          console.log("🟢 Registered");
+        } else {
+          await connection.invoke("SetOffline");
+          setUsers([]);
+          console.log("⚪ Offline");
+        }
+
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    run();
+
+  }, [isOnline, connection]);
 
   // 📞 gọi admin
   const handleCall = async (user: User) => {
