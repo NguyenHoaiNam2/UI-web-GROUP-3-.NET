@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import * as signalR from "@microsoft/signalr";
 import { url } from "../../env.js";
-
+import ringSound from "../../assets/ring.mp3";
 
 interface ConsultationAdminPageProps {
   setShowCall: (v: boolean) => void;
@@ -25,8 +25,9 @@ export const ConsultationAdminPage: React.FC<ConsultationAdminPageProps> = ({ se
 
   // 🔊 audio (chỉ tạo 1 lần)
   const [audio] = useState(() => {
-    const a = new Audio("/ring.mp3");
+    const a = new Audio(ringSound);
     a.loop = true;
+    a.volume = 0.3;
     return a;
   });
 
@@ -63,49 +64,73 @@ export const ConsultationAdminPage: React.FC<ConsultationAdminPageProps> = ({ se
   useEffect(() => {
     if (!connection) return;
 
-    connection.start()
-      .then(() => {
+    const start = async () => {
+      try {
+        await connection.start();
         console.log("✅ SignalR connected");
 
-        // danh sách online
         connection.on("ReceiveOnlineUsers", (data: User[]) => {
           setUsers(data);
         });
 
-        // incoming call
         connection.on("IncomingCall", (data) => {
+          console.log("📞 IncomingCall");
           setIncomingCall(data);
           setIsRinging(true);
-          audio.play();
+
+          audio.play().catch(err => console.log("Audio error:", err));
         });
 
         connection.on("CallAccepted", () => {
+          console.log("✅ CallAccepted");
           setShowCall(true);
         });
 
         connection.on("CallRejected", () => {
+          console.log("❌ CallRejected");
+
           audio.pause();
+          audio.currentTime = 0;
+
           setIsRinging(false);
           setMeCalling(false);
         });
 
         connection.on("CallTimeout", () => {
+          console.log("⏳ CallTimeout");
+
           alert("⏳ Không có phản hồi");
+
           audio.pause();
+          audio.currentTime = 0;
+
           setIncomingCall(null);
           setIsRinging(false);
           setMeCalling(false);
         });
 
         if (isOnline) {
-          connection.invoke("Register");
+          await connection.invoke("Register");
         }
-      })
-      .catch(err => console.error("❌ SignalR error:", err));
+
+      } catch (err) {
+        console.error("❌ SignalR error:", err);
+      }
+    };
+
+    start();
 
     return () => {
+      // 🔥 QUAN TRỌNG: remove tất cả listener
+      connection.off("ReceiveOnlineUsers");
+      connection.off("IncomingCall");
+      connection.off("CallAccepted");
+      connection.off("CallRejected");
+      connection.off("CallTimeout");
+
       connection.stop();
     };
+
   }, [connection]);
 
   // 🔄 toggle online
@@ -124,7 +149,7 @@ export const ConsultationAdminPage: React.FC<ConsultationAdminPageProps> = ({ se
 
   // 📞 gọi
   const handleCall = async (user: User) => {
-    if (!connection) return;
+    if (!connection || incomingCall) return;
 
     setMeCalling(true);
     await connection.invoke("CallUser", user.userId);
@@ -135,11 +160,13 @@ export const ConsultationAdminPage: React.FC<ConsultationAdminPageProps> = ({ se
     if (!connection || !incomingCall) return;
 
     audio.pause();
+    audio.currentTime = 0;
     setIsRinging(false);
 
     await connection.invoke("AcceptCall", incomingCall.fromUserId);
 
     setIncomingCall(null);
+    setMeCalling(false);
     setShowCall(true);
   };
 
@@ -148,6 +175,7 @@ export const ConsultationAdminPage: React.FC<ConsultationAdminPageProps> = ({ se
     if (!connection || !incomingCall) return;
 
     audio.pause();
+    audio.currentTime = 0;
     setIsRinging(false);
 
     await connection.invoke("RejectCall", incomingCall.fromUserId);
@@ -216,8 +244,8 @@ export const ConsultationAdminPage: React.FC<ConsultationAdminPageProps> = ({ se
                     disabled={user.isCalling || meCalling}
                     onClick={() => handleCall(user)}
                     className={`px-3 py-1 rounded-lg text-white ${user.isCalling || meCalling
-                        ? "bg-gray-400 cursor-not-allowed"
-                        : "bg-blue-500 hover:bg-blue-600"
+                      ? "bg-gray-400 cursor-not-allowed"
+                      : "bg-blue-500 hover:bg-blue-600"
                       }`}
                   >
                     {user.isCalling || meCalling ? "Bận" : "Gọi"}
