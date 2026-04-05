@@ -33,6 +33,7 @@ interface SignalRContextType {
     acceptCall: () => Promise<void>;
     rejectCall: () => Promise<void>;
     endCall: () => Promise<void>;
+    cancelCall: () => Promise<void>;
     isConnected: boolean;
 }
 
@@ -56,7 +57,6 @@ export const SignalRProvider: React.FC<{
 
     const isMountedRef = useRef(true);
     const hasRegisteredRef = useRef(false);
-    const listenersSetupRef = useRef(false);
 
     // Lưu isOnline vào localStorage
     useEffect(() => {
@@ -113,7 +113,6 @@ export const SignalRProvider: React.FC<{
             connection.off(event);
         });
 
-        console.log("🧹 Đã off tất cả listeners cũ");
 
         // Đăng ký lại listeners
         connection.on("ReceiveOnlineUsers", (onlineUsers: User[]) => {
@@ -129,10 +128,13 @@ export const SignalRProvider: React.FC<{
         });
 
         connection.on("CallRejected", () => {
-            if (isMountedRef.current) {
-                setMeCalling(false);
-                setIsInCall(false);
-            }
+            if (!isMountedRef.current) return;
+
+            console.log("📴 Nhận được CallRejected từ server");
+
+            setIncomingCall(null);
+            setMeCalling(false);           // ← Quan trọng cho bên gọi
+            setIsInCall(false);
         });
 
         connection.on("CallTimeout", () => {
@@ -159,16 +161,11 @@ export const SignalRProvider: React.FC<{
             if (!isMountedRef.current) return;
 
             console.log("📴 Nhận được CallEnded từ server");
-
-            setIsInCall(false);        // Luôn set về false, không cần check
-            console.log("📴 Đã set isInCall = false");
+            setIsInCall(false);
         });
-        
-        console.log("✅ SignalR listeners setup completed (Context)");
 
         // Cleanup khi effect unmount
         return () => {
-            console.log("🧹 Cleanup listeners khi effect unmount");
             events.forEach(event => connection.off(event));
         };
     }, [connection]);   // Chỉ phụ thuộc vào connection
@@ -222,9 +219,31 @@ export const SignalRProvider: React.FC<{
         if (!connection || !incomingCall) return;
         try {
             await connection.invoke("RejectCall", incomingCall.fromUserId);
+
+            // Reset tất cả trạng thái liên quan
             setIncomingCall(null);
+            setMeCalling(false);           // ← Quan trọng: reset cho bên gọi
+            setIsInCall(false);
+
+            console.log("✅ Đã reject cuộc gọi và reset trạng thái");
         } catch (err) {
-            console.error(err);
+            console.error("RejectCall error:", err);
+        }
+    };
+    // Cancel từ bên gọi (huỷ cuộc gọi đang chờ)
+    const cancelCall = async () => {
+        if (!connection) return;
+        try {
+            // Bên gọi huỷ không cần truyền fromUserId, server sẽ lấy từ Context.ConnectionId
+            await connection.invoke("CancelCall");   // ← Gọi method mới trên server
+
+            setMeCalling(false);
+            setIncomingCall(null);
+            setIsInCall(false);
+
+            console.log("✅ Bên gọi đã huỷ cuộc gọi");
+        } catch (err) {
+            console.error("CancelCall error:", err);
         }
     };
     // Hàm kết thúc cuộc gọi
@@ -262,6 +281,7 @@ export const SignalRProvider: React.FC<{
         acceptCall,
         rejectCall,
         endCall,
+        cancelCall,
         isConnected,
     };
 
