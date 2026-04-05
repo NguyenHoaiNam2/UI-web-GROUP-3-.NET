@@ -15,3 +15,9 @@ export const getSignalRConnection = () => {
   }
   return connection;
 };
+export const resetSignalRConnection = () => {
+  if (connection) {
+    connection.stop().catch(() => { });
+    connection = null;
+  }
+};

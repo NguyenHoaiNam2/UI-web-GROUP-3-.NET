@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { getSignalRConnection } from "../../app/services/signalr";
+import { useSignalR } from "../contexts/SignalRContext";
 
 interface ConsultationUserPageProps {
   setShowCall: (v: boolean) => void;
@@ -15,154 +15,28 @@ interface User {
 export const ConsultationUserPage: React.FC<ConsultationUserPageProps> = ({
   setShowCall,
 }) => {
-  const connection = getSignalRConnection();
+    const { users, isOnline, meCalling, callUser, toggleOnline } = useSignalR();
 
-  const [isOnline, setIsOnline] = useState<boolean>(() => {
-    const saved = localStorage.getItem("isOnline");
-    return saved !== null ? JSON.parse(saved) : true;
-  });
-
-  const [users, setUsers] = useState<User[]>([]);
-  const [meCalling, setMeCalling] = useState(false);
-
-  // Banner
-  const banners = [
-    "https://picsum.photos/800/400?1",
-    "https://picsum.photos/800/400?2",
-    "https://picsum.photos/800/400?3",
-  ];
-
-  const [currentIndex, setCurrentIndex] = useState(0);
-
-  // Lưu trạng thái online vào localStorage
-  useEffect(() => {
-    localStorage.setItem("isOnline", JSON.stringify(isOnline));
-  }, [isOnline]);
-
-  // Auto slide banner
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % banners.length);
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  // 🚀 Khởi tạo connection + lắng nghe events
-  // 🚀 Khởi tạo connection + lắng nghe events
-  useEffect(() => {
-    if (!connection) return;
-
-    let isMounted = true;
-
-    const startConnection = async () => {
-      try {
-        if (connection.state === "Disconnected") {
-          await connection.start();
-        }
-
-        // Off trước khi on (an toàn)
-        connection.off("ReceiveOnlineUsers");
-        connection.off("CallAccepted");
-        connection.off("CallRejected");
-        connection.off("CallTimeout");
-
-        connection.on("ReceiveOnlineUsers", (onlineUsers: User[]) => {
-          if (isMounted) setUsers(onlineUsers);
-        });
-
-        connection.on("CallAccepted", () => {
-          if (isMounted) {
-            setShowCall(true);
-            setMeCalling(false);
-          }
-        });
-
-        connection.on("CallRejected", () => {
-          if (isMounted) {
-            setMeCalling(false);
-            // alert("Cuộc gọi bị từ chối"); // hoặc dùng toast
-          }
-        });
-
-        connection.on("CallTimeout", () => {
-          if (isMounted) {
-            setMeCalling(false);
-            alert("Cuộc gọi không có phản hồi (timeout)");
-          }
-        });
-
-        if (isOnline) {
-          await connection.invoke("Register");
-        }
-      } catch (err) {
-        console.error("SignalR connection error:", err);
-      }
-    };
-
-    startConnection();
-
-    return () => {
-      isMounted = false;
-      // Nên off bằng tên event là đủ ở đây vì ta kiểm soát chặt
-      connection.off("ReceiveOnlineUsers");
-      connection.off("CallAccepted");
-      connection.off("CallRejected");
-      connection.off("CallTimeout");
-    };
-  }, [connection, isOnline, setShowCall]);   // tạm giữ, nhưng nên tối ưu sau
-
-  // 🔄 Toggle Online / Offline
-  useEffect(() => {
-    if (!connection) return;
-
-    const toggleOnlineStatus = async () => {
-      try {
-        if (connection.state === "Disconnected") {
-          await connection.start();
-        }
-
-        if (connection.state === "Connecting") {
-          await new Promise<void>((resolve) => {
-            const checkInterval = setInterval(() => {
-              if (connection.state === "Connected") {
-                clearInterval(checkInterval);
-                resolve();
-              }
-            }, 100);
-          });
-        }
-
-        if (isOnline) {
-          await connection.invoke("Register");
-          console.log("🟢 User Registered");
-        } else {
-          await connection.invoke("SetOffline");
-          setUsers([]);
-          console.log("⚪ User went Offline");
-        }
-      } catch (err) {
-        console.error("Toggle online status error:", err);
-      }
-    };
-
-    toggleOnlineStatus();
-  }, [isOnline, connection]);
-
-  // 📞 Gọi cho quản lý (admin)
-  const handleCall = async (user: User) => {
-    if (!connection || !isOnline || meCalling) return;
-
-    setMeCalling(true);
-
-    try {
-      await connection.invoke("CallUser", user.userId);
-      // Không set false ở đây vì chờ server trả về Accepted/Rejected/Timeout
-    } catch (err) {
-      console.error("CallUser error:", err);
-      setMeCalling(false);           // quan trọng: lỗi ngay khi invoke cũng phải reset
-    }
-  };
+  
+    // Banner
+    const banners = [
+      "https://picsum.photos/800/400?1",
+      "https://picsum.photos/800/400?2",
+      "https://picsum.photos/800/400?3",
+    ];
+  
+    const [currentIndex, setCurrentIndex] = useState(0);
+  
+    // Auto slide banner
+    useEffect(() => {
+      const interval = setInterval(() => {
+        setCurrentIndex((prev) => (prev + 1) % banners.length);
+      }, 3000);
+  
+      return () => clearInterval(interval);
+    }, [banners.length]);   // tốt hơn là để banners.length
+  
+    const handleCall = (user: User) => callUser(user.userId);
 
   return (
     <div className="flex flex-col h-[calc(100vh-90px)] p-4 gap-4">
@@ -186,7 +60,7 @@ export const ConsultationUserPage: React.FC<ConsultationUserPageProps> = ({
 
           {/* Toggle Button */}
           <button
-            onClick={() => setIsOnline((prev) => !prev)}
+            onClick={toggleOnline}
             className={`w-24 h-10 rounded-xl text-white font-semibold transition-colors ${isOnline ? "bg-green-500 hover:bg-green-600" : "bg-gray-400 hover:bg-gray-500"
               }`}
           >

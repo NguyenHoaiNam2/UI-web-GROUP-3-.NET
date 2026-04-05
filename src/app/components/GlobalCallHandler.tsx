@@ -1,14 +1,11 @@
+// GlobalCallHandler.tsx
 import React, { useEffect, useState } from "react";
-import ringSound from "../../assets/ring.mp3";   // điều chỉnh đường dẫn cho đúng
-import { getSignalRConnection } from "../../app/services/signalr";
+import ringSound from "../../assets/ring.mp3";
+import { useSignalR } from "../contexts/SignalRContext";   // ← import này
 
 export const GlobalCallHandler: React.FC = () => {
-  const connection = getSignalRConnection();
+  const { incomingCall, acceptCall, rejectCall } = useSignalR();
 
-  const [incomingCall, setIncomingCall] = useState<any>(null);
-  const [isRinging, setIsRinging] = useState(false);
-
-  // Audio chỉ tạo 1 lần
   const [audio] = useState(() => {
     const a = new Audio(ringSound);
     a.loop = true;
@@ -16,7 +13,6 @@ export const GlobalCallHandler: React.FC = () => {
     return a;
   });
 
-  // Cleanup audio khi component unmount (ít xảy ra vì component này ở mức cao)
   useEffect(() => {
     return () => {
       audio.pause();
@@ -24,70 +20,22 @@ export const GlobalCallHandler: React.FC = () => {
     };
   }, [audio]);
 
+  // Bắt đầu / dừng ring khi có incomingCall
   useEffect(() => {
-    if (!connection) return;
-
-    let isMounted = true;
-
-    const handleIncomingCall = (data: any) => {
-      if (!isMounted) return;
-
-      setIncomingCall(data);
-      setIsRinging(true);
+    if (incomingCall) {
       audio.play().catch(console.error);
-    };
-
-    const handleCallTimeoutForMe = () => {
-      if (!isMounted) return;
-
+    } else {
       audio.pause();
       audio.currentTime = 0;
-      setIncomingCall(null);
-      setIsRinging(false);
-      alert("Cuộc gọi đã hết thời gian chờ. Người gọi không chờ nữa.");
-    };
-
-    // Đăng ký listener
-    connection.on("IncomingCall", handleIncomingCall);
-    connection.on("CallTimeoutForReceiver", handleCallTimeoutForMe);
-
-    return () => {
-      connection.off("IncomingCall", handleIncomingCall);
-      connection.off("CallTimeoutForReceiver", handleCallTimeoutForMe);
-    };
-  }, [connection, audio]);
-
-  // Xử lý Accept / Reject
-  const handleAccept = async () => {
-    if (!connection || !incomingCall) return;
-
-    audio.pause();
-    audio.currentTime = 0;
-    setIsRinging(false);
-
-    try {
-      await connection.invoke("AcceptCall", incomingCall.fromUserId);
-      // Sau khi accept thì chuyển sang trang call (tùy bạn implement)
-      // Ví dụ: window.location.href = "/consultation"; hoặc dùng navigate từ react-router
-      setIncomingCall(null);
-    } catch (err) {
-      console.error(err);
     }
+  }, [incomingCall, audio]);
+
+  const handleAccept = async () => {
+    await acceptCall();
   };
 
   const handleReject = async () => {
-    if (!connection || !incomingCall) return;
-
-    audio.pause();
-    audio.currentTime = 0;
-    setIsRinging(false);
-
-    try {
-      await connection.invoke("RejectCall", incomingCall.fromUserId);
-      setIncomingCall(null);
-    } catch (err) {
-      console.error(err);
-    }
+    await rejectCall();
   };
 
   if (!incomingCall) return null;

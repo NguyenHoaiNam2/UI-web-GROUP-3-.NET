@@ -23,6 +23,8 @@ import { Chapter, CHAPTERS } from '@/app/types'; // Ensure Chapter and CHAPTERS 
 import CallPopup from "./components/CallPopup";
 import { url } from '../env.js';
 import { GlobalCallHandler } from './components/GlobalCallHandler';
+import { getSignalRConnection, resetSignalRConnection } from './services/signalr';
+import { SignalRProvider } from './contexts/SignalRContext';
 
 
 // Định nghĩa các trang chính
@@ -371,19 +373,31 @@ const App = () => {
   };
 
   // Hàm đăng xuất
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-    setUserRole(null);
-    try {
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('userName');
-      localStorage.removeItem('userEmail');
-      localStorage.removeItem('userRole');
-    } catch (e) { }
-    setUserData({ name: 'Khách', email: '' });
-    setCurrentPage('HOME');
-    setShowAuthPage(true);
-  };
+  const handleLogout = async () => {
+  // Clean SignalR
+  try {
+    const connection = getSignalRConnection();
+    if (connection?.state === "Connected") {
+      await connection.invoke("SetOffline").catch(() => {});
+    }
+    if (connection?.state !== "Disconnected") {
+      await connection.stop().catch(() => {});
+    }
+    resetSignalRConnection();           // ← Quan trọng
+  } catch (err) {
+    console.error("Clean SignalR error:", err);
+  }
+
+  // Clean auth + UI
+  setIsAuthenticated(false);
+  setUserRole(null);
+  localStorage.clear();                 // hoặc remove từng item như cũ
+  setUserData({ name: "Khách", email: "" });
+  setCurrentPage("HOME");
+  setShowAuthPage(true);
+
+  console.log("👋 Logout thành công");
+};
 
   // Nếu chưa đăng nhập và đang hiển thị trang Auth
   if (!isAuthenticated && showAuthPage) {
@@ -510,6 +524,7 @@ const App = () => {
   };
 
   return (
+    <SignalRProvider isAuthenticated={isAuthenticated}>
     <div
       className="min-h-screen w-full flex flex-col font-sans text-gray-800 overflow-x-hidden"
       style={{
@@ -684,6 +699,7 @@ const App = () => {
       <GlobalCallHandler />
       {/* Footer removed - app uses full-height content */}
     </div>
+    </SignalRProvider>
   );
 };
 
