@@ -1,0 +1,24 @@
+[33m1e12fb6[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{0}: pull: Fast-forward
+[33m79d07e7[m HEAD@{1}: commit: fix videocall
+[33m110128b[m HEAD@{2}: commit: fix
+[33maa14ad8[m HEAD@{3}: pull: Merge made by the 'ort' strategy.
+[33m3b66f4b[m HEAD@{4}: commit: refactor
+[33mae4fa30[m HEAD@{5}: pull: Fast-forward
+[33mbf0c4db[m HEAD@{6}: commit: global online
+[33mb6c9aaf[m HEAD@{7}: commit: fix audio
+[33me3061af[m HEAD@{8}: commit: consultation
+[33mfeb0433[m HEAD@{9}: pull: Merge made by the 'ort' strategy.
+[33me8ad91c[m HEAD@{10}: commit: realtime user-admin
+[33m8600e7c[m HEAD@{11}: commit: UI consultation User-Admin
+[33m7419637[m HEAD@{12}: pull: Fast-forward
+[33mf7d4336[m HEAD@{13}: commit: fix videocall
+[33m71ecc78[m HEAD@{14}: pull: Fast-forward
+[33m35e70bf[m HEAD@{15}: commit: minimize popup
+[33mf890b8d[m HEAD@{16}: commit: fix chat box
+[33md1a8761[m HEAD@{17}: pull: Fast-forward
+[33mb858e64[m HEAD@{18}: commit: VideoCall Layout
+[33m6139c60[m HEAD@{19}: pull: Fast-forward
+[33m0bf65ff[m HEAD@{20}: commit: Phân Quyền
+[33m8ca52bd[m HEAD@{21}: pull: Fast-forward
+[33me3c19dc[m HEAD@{22}: commit: merge
+[33m13ce808[m HEAD@{23}: clone: from https://github.com/NguyenHoaiNam2/UI-web-GROUP-3-.NET.git

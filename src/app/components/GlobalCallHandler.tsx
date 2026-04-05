@@ -1,4 +1,3 @@
-// components/GlobalCallHandler.tsx
 import React, { useEffect, useState } from "react";
 import ringSound from "../../assets/ring.mp3";   // điều chỉnh đường dẫn cho đúng
 import { getSignalRConnection } from "../../app/services/signalr";
