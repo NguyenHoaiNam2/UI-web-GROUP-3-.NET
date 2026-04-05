@@ -1,9 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useSignalR } from "../contexts/SignalRContext";
 
-interface ConsultationAdminPageProps {
-  setShowCall: (v: boolean) => void;
-}
 
 interface User {
   userId: string;
@@ -12,9 +9,7 @@ interface User {
   isCalling: boolean;
 }
 
-export const ConsultationAdminPage: React.FC<ConsultationAdminPageProps> = ({
-  setShowCall,
-}) => {
+export const ConsultationAdminPage: React.FC = () => {
   const { users, isOnline, meCalling, callUser, toggleOnline } = useSignalR();
 
 

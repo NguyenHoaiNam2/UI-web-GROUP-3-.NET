@@ -20,7 +20,6 @@ import { DocumentsPage } from '@/app/components/DocumentsPage';
 import { Question } from '@/app/types';
 import { Chapter, CHAPTERS } from '@/app/types'; // Ensure Chapter and CHAPTERS are imported
 
-import CallPopup from "./components/CallPopup";
 import { url } from '../env.js';
 import { GlobalCallHandler } from './components/GlobalCallHandler';
 import { getSignalRConnection, resetSignalRConnection } from './services/signalr';
@@ -47,7 +46,6 @@ const PAGES: Record<PageKey, string> = {
 const App = () => {
 
   //Quản lý popup video call
-  const [showCall, setShowCall] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   // State for mobile menu
   const [showMobileMenu, setShowMobileMenu] = useState(false);
@@ -454,23 +452,19 @@ const App = () => {
         return <ReviewPage questions={questions} />;
       case 'CONSULTATION':
         if (!isAuthenticated) {
-          // return (
-          //   <div className="flex items-center justify-center h-full">
-          //     <button onClick={handleShowAuthPage}>
-          //       Vui lòng đăng nhập để dùng chức năng này.
-          //     </button>
-          //   </div>
-          // );
-          return <ConsultationUserPage setShowCall={setShowCall} />;
+          return (
+            <div className="flex items-center justify-center h-full">
+              <button onClick={handleShowAuthPage}>
+                Vui lòng đăng nhập để dùng chức năng này.
+              </button>
+            </div>
+          );
         }
         if (userRole === 'ADMIN') {
-          return <ConsultationAdminPage
-            setShowCall={setShowCall} />;
+          return <ConsultationAdminPage />;
         }
         return (
-          <ConsultationUserPage
-            setShowCall={setShowCall}   // chỉ cần mở popup
-          />
+          <ConsultationUserPage />
         );
       case 'PROFILE':
         if (isAuthenticated) {
@@ -689,13 +683,6 @@ const App = () => {
         </AnimatePresence>
       </main>
 
-      {showCall && (
-        <CallPopup
-          onClose={() => setShowCall(false)}
-          isMinimized={isMinimized}
-          setIsMinimized={setIsMinimized}
-        />
-      )}
       <GlobalCallHandler />
       {/* Footer removed - app uses full-height content */}
     </div>
