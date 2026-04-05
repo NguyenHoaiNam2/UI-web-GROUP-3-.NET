@@ -36,6 +36,9 @@ export const QuizGame: React.FC<QuizGameProps> = ({ examTitle, questions, onExit
   const [showResultStep, setShowResultStep] = useState(false);
   const [timeElapsed, setTimeElapsed] = useState(0);
   const [focusedOptionIndex, setFocusedOptionIndex] = useState<number | null>(null);
+  
+  // State for mobile drawer
+  const [isQuestionListOpen, setIsQuestionListOpen] = useState(false);
 
   // If no questions are provided, show loading state
   if (!questions || questions.length === 0) {
@@ -357,12 +360,58 @@ export const QuizGame: React.FC<QuizGameProps> = ({ examTitle, questions, onExit
   }
 
   return (
-    <div className="w-full flex-1 flex flex-col md:flex-row bg-white text-gray-800">
-      {/* Sidebar Navigation */}
-  <div className="w-full md:w-80 bg-gray-50 border-r border-gray-200 flex flex-col shadow-lg z-10 flex-shrink-0 md:sticky md:top-20 md:h-[calc(100vh-5rem)] overflow-y-auto hide-scrollbar">
+    <div className="w-full flex-1 flex flex-col md:flex-row bg-white text-gray-800 relative">
+      {/* 
+        ========================================
+        MOBILE HEADER (Timer & Submit) - Displayed only on small screens
+        ========================================
+      */}
+      <div className="md:hidden flex items-center justify-between p-4 border-b border-gray-200 bg-white sticky top-0 z-40 shadow-sm">
+        <div className="flex items-center gap-2">
+          {showTimer && (
+            <div className={`flex items-center gap-2 font-mono text-xl font-bold px-3 py-1.5 rounded-lg border ${timeLeft < 60 ? 'bg-red-50 text-red-600 border-red-200 animate-pulse' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
+              <Clock size={18} className={timeLeft < 60 ? 'text-red-500' : 'text-blue-600'} />
+              {formatTime(timeLeft)}
+            </div>
+          )}
+        </div>
+        <button
+          onClick={handleSubmit}
+          className="flex items-center gap-1.5 px-4 py-2 bg-green-600 active:bg-green-700 text-white rounded-lg font-bold shadow-md shadow-green-600/20"
+        >
+          <CheckCircle size={18} /> {submitButtonText}
+        </button>
+      </div>
+
+      {/* 
+        ========================================
+        SIDEBAR NAVIGATION (PC: Sidebar, Mobile: Drawer)
+        ========================================
+      */}
+      {/* Mobile Backdrop for Drawer */}
+      {isQuestionListOpen && (
+        <div 
+          className="md:hidden fixed inset-0 bg-black/50 z-40 backdrop-blur-sm transition-opacity"
+          onClick={() => setIsQuestionListOpen(false)}
+        />
+      )}
+
+      {/* The Sidebar / Drawer container */}
+      <div className={`
+        fixed md:static inset-y-0 right-0 z-50 flex flex-col bg-white border-l md:border-l-0 md:border-r border-gray-200 shadow-2xl md:shadow-none transition-transform duration-300 ease-in-out w-[85vw] max-w-[320px] md:w-80 md:flex-shrink-0 md:h-[calc(100vh-5rem)]
+        ${isQuestionListOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'}
+      `}>
         
-        {/* Timer & Info */}
-        <div className="p-6 border-b border-gray-200 bg-white">
+        {/* Drawer Header (Mobile Only) */}
+        <div className="md:hidden flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50">
+          <h3 className="font-bold text-gray-800 text-lg">Danh sách câu hỏi</h3>
+          <button onClick={() => setIsQuestionListOpen(false)} className="p-2 text-gray-500 bg-gray-200 hover:bg-gray-300 rounded-full">
+            <XCircle size={20} />
+          </button>
+        </div>
+
+        {/* Timer & Info (PC ONLY - since mobile has it in header) */}
+        <div className="hidden md:block p-6 border-b border-gray-200 bg-white">
           <div className="flex justify-between items-center mb-4 text-gray-500">
             <span className="text-sm font-semibold uppercase tracking-wider">Thời gian còn lại</span>
             <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded font-bold">
@@ -378,13 +427,24 @@ export const QuizGame: React.FC<QuizGameProps> = ({ examTitle, questions, onExit
           )}
         </div>
 
-        {/* Question List */}
-        <div className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
-          <h4 className="font-bold text-gray-500 text-xs uppercase tracking-wider mb-4 flex items-center justify-between">
+        {/* Question List Grid */}
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+          <h4 className="hidden md:flex font-bold text-gray-500 text-xs uppercase tracking-wider mb-4 items-center justify-between">
             <span>Danh sách câu hỏi</span>
             <span className="text-gray-400">{Object.keys(selectedAnswers).length}/{totalQuestions}</span>
           </h4>
           
+          {/* Mobile progress indicator inside drawer */}
+          <div className="md:hidden mb-4 px-2">
+            <div className="flex justify-between text-sm font-semibold text-gray-600 mb-1">
+              <span>Đã làm:</span>
+              <span className="text-blue-600">{Object.keys(selectedAnswers).length}/{totalQuestions}</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="bg-blue-600 h-2 rounded-full" style={{ width: `${(Object.keys(selectedAnswers).length / totalQuestions) * 100}%` }}></div>
+            </div>
+          </div>
+
           <div className="grid grid-cols-5 gap-2.5">
             {usedQuestions.map((q, idx) => {
               const selectedOptionIndex = selectedAnswers[q.id];
@@ -430,8 +490,8 @@ export const QuizGame: React.FC<QuizGameProps> = ({ examTitle, questions, onExit
           </div>
         </div>
         
-        {/* Submit Actions */}
-        <div className="p-6 border-t border-gray-200 bg-white backdrop-blur-sm">
+        {/* Submit Actions (PC ONLY) */}
+        <div className="hidden md:block p-6 border-t border-gray-200 bg-white backdrop-blur-sm mt-auto z-10 bottom-0 sticky">
           <button
             onClick={handleSubmit}
             className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold shadow-lg shadow-green-600/30 transition-all hover:-translate-y-0.5"
@@ -442,39 +502,41 @@ export const QuizGame: React.FC<QuizGameProps> = ({ examTitle, questions, onExit
       </div>
 
       {/* Main Content Area (Right) */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden bg-white relative">
-        <div className="flex-1 overflow-y-auto p-6 md:p-10 lg:p-12 pb-32">
+      <div className="flex-1 flex flex-col h-full overflow-hidden bg-white relative pb-[env(safe-area-inset-bottom)] md:pb-0">
+        {/* Main Content Scroll Area - Leave room for Sticky Footer */}
+        <div className="flex-1 overflow-y-auto p-4 md:p-10 lg:p-12 pb-32 md:pb-32 hide-scrollbar md:scrollbar-default">
           
-          <div className="max-w-5xl mx-auto h-full flex flex-col">
+          <div className="max-w-5xl mx-auto h-full flex flex-col mb-20 md:mb-0">
             {/* Header info for question */}
-            <div className="mb-6 flex items-center justify-between">
-              <span className="inline-flex py-1.5 px-4 bg-blue-50 text-blue-700 rounded-lg text-sm font-bold border border-blue-200 shadow-sm">
+            <div className="mb-4 md:mb-6 flex items-center justify-between">
+              <span className="inline-flex py-1 px-3 md:py-1.5 md:px-4 bg-blue-50 text-blue-700 rounded-lg text-sm md:text-base font-bold border border-blue-200 shadow-sm">
                 Câu {currentQuestionIndex + 1} / {totalQuestions}
               </span>
               
               {allowUnsure && (
-                <label className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-yellow-600 cursor-pointer transition-colors bg-white py-1.5 px-4 rounded-lg border border-gray-200 shadow-sm">
+                <label className="inline-flex items-center gap-2 text-xs md:text-sm text-gray-500 hover:text-yellow-600 cursor-pointer transition-colors bg-white py-1.5 px-3 rounded-lg border border-gray-200 shadow-sm">
                   <input
                     type="checkbox"
                     checked={!!unsureQuestions[currentQuestion.id]}
                     onChange={handleToggleUnsure}
                     className="w-4 h-4 rounded border-gray-300 bg-white text-yellow-500 focus:ring-yellow-400 focus:ring-offset-white"
                   />
-                  <span className="select-none font-medium">Đánh dấu xem lại</span>
+                  <span className="select-none font-medium hidden xs:inline">Đánh dấu xem lại</span>
+                  <span className="select-none font-medium xs:hidden">Đánh dấu</span>
                 </label>
               )}
             </div>
 
             {/* Split View for Question: Text & Image */}
-            <div className={`flex flex-col ${currentQuestion.imageUrl ? 'lg:flex-row gap-8 lg:gap-12' : ''} mb-8`}>
+            <div className={`flex flex-col ${currentQuestion.imageUrl ? 'lg:flex-row gap-6 md:gap-8 lg:gap-12' : ''} mb-8`}>
               
               {/* Question Text & Options */}
-              <div className={`flex-1 flex flex-col space-y-6 ${currentQuestion.imageUrl ? 'lg:w-1/2' : ''}`}>
-                <h3 className="text-[22px] md:text-2xl font-bold text-gray-800 leading-relaxed">
+              <div className={`flex-1 flex flex-col space-y-4 md:space-y-6 ${currentQuestion.imageUrl ? 'lg:w-1/2' : ''}`}>
+                <h3 className="text-xl md:text-2xl font-bold text-gray-800 leading-snug md:leading-relaxed">
                   {currentQuestion.content}
                 </h3>
 
-                <div className="space-y-3 mt-4">
+                <div className="space-y-3 mt-2 md:mt-4">
                   {currentQuestion.options.map((option, index) => {
                     const userAns = selectedAnswers[currentQuestion.id];
                     const isAnswered = userAns !== undefined;
@@ -559,12 +621,12 @@ export const QuizGame: React.FC<QuizGameProps> = ({ examTitle, questions, onExit
 
               {/* Image Area (Takes right half if exists) */}
               {currentQuestion.imageUrl && (
-                <div className="lg:w-1/2 flex items-start justify-center pt-2">
-                  <div className="w-full bg-gray-50/50 p-4 rounded-2xl border border-gray-200 flex items-center justify-center shadow-inner">
+                <div className="w-full lg:w-1/2 flex items-start justify-center pt-2">
+                  <div className="w-full h-40 md:h-auto bg-gray-50/50 p-2 md:p-4 rounded-2xl border border-gray-200 flex items-center justify-center shadow-inner overflow-hidden">
                     <img 
                       src={url +'assets/uploads/'+ currentQuestion.imageUrl} 
                       alt="Hình minh họa" 
-                      className="max-w-full max-h-[500px] object-contain rounded-xl drop-shadow-md" 
+                      className="max-w-full max-h-full object-contain rounded-xl drop-shadow-md" 
                     />
                   </div>
                 </div>
@@ -574,35 +636,53 @@ export const QuizGame: React.FC<QuizGameProps> = ({ examTitle, questions, onExit
           </div>
         </div>
 
-        {/* Floating Navigation Controls (Bottom Right style) */}
-        <div className="absolute bottom-6 right-6 md:bottom-10 md:right-10 flex items-center gap-2 bg-white/95 p-2 rounded-2xl border border-gray-200 shadow-2xl backdrop-blur-md z-10 w-[240px]">
-          <button
-            onClick={handlePrev}
-            disabled={currentQuestionIndex === 0}
-            className={`flex-1 flex items-center justify-center py-3 rounded-xl font-bold transition-all ${
-              currentQuestionIndex === 0 
-                ? 'opacity-30 cursor-not-allowed text-gray-400 bg-gray-50' 
-                : 'hover:bg-gray-100 text-gray-700 hover:text-gray-900 active:scale-95 bg-white'
-            }`}
-            title="Câu trước"
-          >
-            <ArrowLeft size={20} className="mr-1" /> Trước
-          </button>
+        {/* 
+          ========================================
+          STICKY FOOTER NAVIGATION (Mobile & Desktop)
+          ========================================
+        */}
+        <div className="fixed md:absolute bottom-0 left-0 right-0 md:left-auto md:bottom-6 md:right-6 z-30 bg-white md:bg-white/95 border-t border-gray-200 md:border md:rounded-2xl shadow-[0_-4px_15px_rgba(0,0,0,0.05)] md:shadow-2xl p-3 md:p-2 backdrop-blur-md pb-[max(env(safe-area-inset-bottom),0.75rem)] md:pb-2">
+          <div className="flex items-center justify-between md:justify-center gap-2 max-w-full md:w-[240px] mx-auto">
+            {/* Button: Câu trước */}
+            <button
+              onClick={handlePrev}
+              disabled={currentQuestionIndex === 0}
+              className={`flex-1 md:flex-none flex items-center justify-center py-2.5 px-3 md:w-[100px] md:py-3 rounded-xl font-bold transition-all ${
+                currentQuestionIndex === 0 
+                  ? 'opacity-30 cursor-not-allowed text-gray-400 bg-gray-50' 
+                  : 'hover:bg-gray-100 text-gray-700 hover:text-gray-900 active:scale-95 bg-white border border-gray-200 shadow-sm md:border-transparent md:shadow-none'
+              }`}
+              title="Câu trước"
+            >
+              <ArrowLeft size={18} className="mr-1" /> <span className="hidden xs:inline md:inline">Trước</span>
+            </button>
 
-          <div className="w-px h-8 bg-gray-200 mx-1"></div>
+            {/* Middle Divider (Desktop) / Menu button (Mobile) */}
+            <div className="hidden md:block w-px h-8 bg-gray-200 mx-1"></div>
+            
+            {/* Nút mở danh sách (Mobile only) */}
+            <button
+              onClick={() => setIsQuestionListOpen(true)}
+              className="md:hidden flex-none p-3 h-[44px] w-[50px] flex items-center justify-center rounded-xl bg-blue-50 text-blue-600 border border-blue-200 shadow-sm active:scale-95"
+              title="Danh sách câu hỏi"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+            </button>
 
-          <button
-            onClick={handleNext}
-            disabled={currentQuestionIndex === totalQuestions - 1}
-            className={`flex-1 flex items-center justify-center py-3 rounded-xl font-bold transition-all ${
-              currentQuestionIndex === totalQuestions - 1 
-                ? 'opacity-30 cursor-not-allowed text-gray-400 bg-gray-50' 
-                : 'hover:bg-blue-600 text-blue-600 hover:text-white active:scale-95 bg-white border border-blue-100 shadow-lg shadow-blue-500/20'
-            }`}
-            title="Câu tiếp theo"
-          >
-            Tiếp <ArrowRight size={20} className="ml-1" />
-          </button>
+            {/* Button: Câu tiếp theo */}
+            <button
+              onClick={handleNext}
+              disabled={currentQuestionIndex === totalQuestions - 1}
+              className={`flex-1 md:flex-none flex items-center justify-center py-2.5 px-3 md:w-[100px] md:py-3 rounded-xl font-bold transition-all ${
+                currentQuestionIndex === totalQuestions - 1 
+                  ? 'opacity-30 cursor-not-allowed text-gray-400 bg-gray-50' 
+                  : 'bg-blue-600 text-white hover:bg-blue-700 active:scale-95 shadow-md shadow-blue-500/30 md:bg-white md:text-blue-600 md:border md:border-blue-100 md:shadow-lg md:hover:bg-blue-50 md:hover:text-blue-700'
+              }`}
+              title="Câu tiếp theo"
+            >
+              <span className="hidden xs:inline md:inline">Tiếp</span> <ArrowRight size={18} className="ml-1" />
+            </button>
+          </div>
         </div>
       </div>
 

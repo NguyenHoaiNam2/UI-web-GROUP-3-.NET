@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Home, FileText, Facebook, Twitter, Instagram, Mail, LogIn, User as UserIcon, LogOut, CheckSquare, Book, Shield, Info } from 'lucide-react';
+import { Home, FileText, Facebook, Twitter, Instagram, Mail, LogIn, User as UserIcon, LogOut, CheckSquare, Book, Shield, Info, Menu, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import logoImage from '@/assets/logo.svg';
 import userAvatar from '@/assets/avatar.svg';
@@ -22,7 +22,7 @@ import { Chapter, CHAPTERS } from '@/app/types'; // Ensure Chapter and CHAPTERS 
 
 import CallPopup from "./components/CallPopup";
 import { url } from '../env.js';
-import { GlobalCallHandler } from "./components/GlobalCallHandler";
+
 
 // Định nghĩa các trang chính
 type PageKey = 'HOME' | 'INTRO' | 'THI' | 'REVIEW' | 'CONSULTATION' | 'DOCS' | 'PROFILE' | 'HISTORY' | 'PRIVACY' | 'CONTACT' | 'ADMIN';
@@ -42,9 +42,12 @@ const PAGES: Record<PageKey, string> = {
 };
 
 const App = () => {
+
   //Quản lý popup video call
   const [showCall, setShowCall] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
+  // State for mobile menu
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   // State quản lý đăng nhập
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState<'USER' | 'ADMIN' | null>(null);
@@ -102,7 +105,7 @@ const App = () => {
         const role = localStorage.getItem('userRole');
         let storedName = localStorage.getItem('userName');
         let storedEmail = localStorage.getItem('userEmail');
-
+        
         if (storedName === 'undefined') storedName = null;
         if (storedEmail === 'undefined') storedEmail = null;
 
@@ -123,7 +126,7 @@ const App = () => {
                 try {
                   if (storedName && storedName !== 'undefined') localStorage.setItem('userName', storedName);
                   if (storedEmail && storedEmail !== 'undefined') localStorage.setItem('userEmail', storedEmail);
-                } catch (e) { }
+                } catch (e) {}
               }
             } catch (e) {
               // ignore fetch errors
@@ -186,9 +189,9 @@ const App = () => {
 
     const fetchAll = async () => {
       try {
-        console.log('Fetching questions from API:', url + 'api/CauHoi');
-        // Fetch using the new API format
-        const res = await fetch(url + 'api/CauHoi'); // Assuming API is running on this backend URL for now
+  console.log('Fetching questions from API:', url + 'api/CauHoi');
+  // Fetch using the new API format
+  const res = await fetch(url + 'api/CauHoi'); // Assuming API is running on this backend URL for now
         let dataQ: any[] = [];
 
         if (res && res.ok) {
@@ -357,7 +360,7 @@ const App = () => {
       localStorage.setItem('userName', validUser.name);
       localStorage.setItem('userEmail', validUser.email);
       localStorage.setItem('userRole', validUser.role);
-    } catch (e) { }
+    } catch (e) {}
     setShowAuthPage(false);
   };
 
@@ -436,14 +439,14 @@ const App = () => {
         return <ReviewPage questions={questions} />;
       case 'CONSULTATION':
         if (!isAuthenticated) {
-          return (
-            <div className="flex items-center justify-center h-full">
-              <button onClick={handleShowAuthPage}>
-                Vui lòng đăng nhập để dùng chức năng này.
-              </button>
-            </div>
-          );
-
+          // return (
+          //   <div className="flex items-center justify-center h-full">
+          //     <button onClick={handleShowAuthPage}>
+          //       Vui lòng đăng nhập để dùng chức năng này.
+          //     </button>
+          //   </div>
+          // );
+          return <ConsultationUserPage setShowCall={setShowCall} />;
         }
         if (userRole === 'ADMIN') {
           return <ConsultationAdminPage
@@ -518,22 +521,22 @@ const App = () => {
       }}
     >
       {/* Navbar */}
-      <nav className="w-full bg-blue-50 px-8 py-4 shadow-sm flex items-center justify-between sticky top-0 z-50 backdrop-blur-md bg-opacity-90">
+      <nav className="w-full bg-blue-50 px-4 md:px-8 py-4 shadow-sm flex items-center justify-between sticky top-0 z-50 backdrop-blur-md bg-opacity-90">
         <div
-          className="flex items-center gap-4 cursor-pointer hover:opacity-80 transition-opacity"
+          className="flex items-center gap-2 md:gap-4 cursor-pointer hover:opacity-80 transition-opacity"
           onClick={() => handlePageChange('HOME')}
         >
           <img
             src={logoImage}
             alt="Group 3 .NET Tech"
-            className="h-12 w-12 object-cover rounded-xl shadow-md border-2 border-white"
+            className="h-10 w-10 md:h-12 md:w-12 object-cover rounded-xl shadow-md border-2 border-white"
           />
-          <span className="font-extrabold text-xl tracking-tight bg-gradient-to-r from-blue-700 to-cyan-600 bg-clip-text text-transparent hidden sm:block">
+          <span className="font-extrabold text-base md:text-xl tracking-tight bg-gradient-to-r from-blue-700 to-cyan-600 bg-clip-text text-transparent sm:block">
             GROUP 3 .NET TECH
           </span>
         </div>
 
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-2 md:gap-6">
           <div className="hidden lg:flex items-center gap-2">
             <NavButton
               active={currentPage === 'HOME'}
@@ -573,25 +576,46 @@ const App = () => {
             />
           </div>
 
-          {/* Mobile Menu Button - simplified placeholder */}
-          <div className="lg:hidden">
-            {/* You might want a mobile menu here later */}
+          <div className="lg:hidden flex items-center justify-center relative">
+            <button
+              onClick={() => setShowMobileMenu(!showMobileMenu)}
+              className="p-2 text-blue-600 bg-blue-100 rounded-lg hover:bg-blue-200 transition-colors"
+            >
+              {showMobileMenu ? <X size={24} /> : <Menu size={24} />}
+            </button>
+            <AnimatePresence>
+              {showMobileMenu && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  className="absolute top-14 right-0 w-64 bg-white rounded-xl shadow-xl border border-blue-100 p-2 flex flex-col gap-1 z-50 origin-top-right"
+                >
+                  <NavButtonMobile active={currentPage === 'HOME'} onClick={() => { handlePageChange('HOME'); setShowMobileMenu(false); }} icon={<Home size={20} />} label={PAGES.HOME} />
+                  <NavButtonMobile active={currentPage === 'INTRO'} onClick={() => { handlePageChange('INTRO'); setShowMobileMenu(false); }} icon={<Info size={20} />} label={PAGES.INTRO} />
+                  <NavButtonMobile active={currentPage === 'THI'} onClick={() => { handlePageChange('THI'); setShowMobileMenu(false); }} icon={<CheckSquare size={20} />} label={PAGES.THI} />
+                  <NavButtonMobile active={currentPage === 'REVIEW'} onClick={() => { handlePageChange('REVIEW'); setShowMobileMenu(false); }} icon={<Book size={20} />} label={PAGES.REVIEW} />
+                  <NavButtonMobile active={currentPage === 'CONSULTATION'} onClick={() => { handlePageChange('CONSULTATION'); setShowMobileMenu(false); }} icon={<Mail size={20} />} label={PAGES.CONSULTATION} />
+                  <NavButtonMobile active={currentPage === 'DOCS'} onClick={() => { handlePageChange('DOCS'); setShowMobileMenu(false); }} icon={<FileText size={20} />} label={PAGES.DOCS} />
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           <div className="h-8 w-[1px] bg-blue-200 mx-2 hidden md:block"></div>
 
-          <div className="flex items-center gap-3 cursor-pointer group relative">
+          <div className="flex items-center gap-2 cursor-pointer relative group">
             <div className="relative">
               <img
                 src={userAvatar}
                 alt="User Avatar"
-                className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-md group-hover:border-blue-200 transition-colors"
+                className="w-8 h-8 md:w-10 md:h-10 rounded-full object-cover border-2 border-white shadow-md group-hover:border-blue-200 transition-colors"
               />
               <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
             </div>
 
             {/* User Dropdown */}
-            <div className="absolute top-full right-0 pt-2 hidden group-hover:block w-64 z-50">
+            <div className="absolute top-full right-0 pt-2 hidden group-hover:block w-56 md:w-64 z-50 origin-top-right">
               {isAuthenticated ? (
                 // Dropdown khi đã đăng nhập
                 <div className="bg-white rounded-xl shadow-xl border border-blue-100 p-4 animate-fade-in flex flex-col gap-3">
@@ -656,7 +680,7 @@ const App = () => {
           setIsMinimized={setIsMinimized}
         />
       )}
-      <GlobalCallHandler />
+
       {/* Footer removed - app uses full-height content */}
     </div>
   );
@@ -686,7 +710,23 @@ const NavButton = ({ active, onClick, label, icon }: NavButtonProps) => {
     </button>
   );
 };
-
+const NavButtonMobile = ({ active, onClick, label, icon }: NavButtonProps) => {
+  return (
+    <button
+      onClick={onClick}
+      className={`
+        flex items-center gap-3 px-4 py-3 w-full rounded-xl transition-all duration-300 text-left
+        ${active
+          ? 'bg-blue-50 text-blue-600 font-semibold'
+          : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50/50'
+        }
+      `}
+    >
+      {icon}
+      <span className="text-sm font-medium">{label}</span>
+    </button>
+  );
+};
 const SocialIcon = ({ icon }: { icon: React.ReactNode }) => (
   <a href="#" className="w-8 h-8 rounded-full bg-white text-blue-600 flex items-center justify-center shadow-sm hover:bg-blue-600 hover:text-white transition-all duration-300">
     {icon}
