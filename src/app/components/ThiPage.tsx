@@ -226,7 +226,7 @@ export const ThiPage: React.FC<ThiPageProps> = ({ isAuthenticated, onShowAuth, o
         </div>
         
         {/* Quiz Interface */}
-        <div className="flex-1 flex w-full">
+        <div className="flex-1 flex w-full min-h-0">
           <QuizGame 
             examTitle={selectedExam.title} 
             questions={examQuestions}

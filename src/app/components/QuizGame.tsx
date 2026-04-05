@@ -224,6 +224,13 @@ export const QuizGame: React.FC<QuizGameProps> = ({ examTitle, questions, onExit
   };
 
   const handleSubmit = () => {
+    // Check for unanswered questions
+    const answeredCount = Object.keys(selectedAnswers).length;
+    if (answeredCount < totalQuestions) {
+      const confirmSubmit = window.confirm(`Bạn còn ${totalQuestions - answeredCount} câu hỏi chưa làm. Bạn có chắc chắn muốn nộp bài không?`);
+      if (!confirmSubmit) return;
+    }
+
     setShowResult(true);
     setIsSubmitted(true);
 
@@ -360,7 +367,7 @@ export const QuizGame: React.FC<QuizGameProps> = ({ examTitle, questions, onExit
   }
 
   return (
-    <div className="w-full flex-1 flex flex-col md:flex-row bg-white text-gray-800 relative">
+    <div className="w-full h-full flex flex-col md:flex-row min-h-0 bg-white text-gray-800 relative">
       {/* 
         ========================================
         MOBILE HEADER (Timer & Submit) - Displayed only on small screens
@@ -369,8 +376,8 @@ export const QuizGame: React.FC<QuizGameProps> = ({ examTitle, questions, onExit
       <div className="md:hidden flex items-center justify-between p-4 border-b border-gray-200 bg-white sticky top-0 z-40 shadow-sm">
         <div className="flex items-center gap-2">
           {showTimer && (
-            <div className={`flex items-center gap-2 font-mono text-xl font-bold px-3 py-1.5 rounded-lg border ${timeLeft < 60 ? 'bg-red-50 text-red-600 border-red-200 animate-pulse' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
-              <Clock size={18} className={timeLeft < 60 ? 'text-red-500' : 'text-blue-600'} />
+            <div className={`flex items-center gap-2 font-mono text-xl font-bold px-3 py-1.5 rounded-lg border ${timeLeft <= 300 ? 'bg-red-50 text-red-600 border-red-200 animate-pulse' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
+              <Clock size={18} className={timeLeft <= 300 ? 'text-red-500' : 'text-blue-600'} />
               {formatTime(timeLeft)}
             </div>
           )}
@@ -420,8 +427,8 @@ export const QuizGame: React.FC<QuizGameProps> = ({ examTitle, questions, onExit
           </div>
           
           {showTimer && (
-            <div className={`flex items-center justify-center gap-3 font-mono text-4xl p-4 rounded-xl font-bold shadow-inner ${timeLeft < 60 ? 'bg-red-50 text-red-600 border border-red-200 animate-pulse' : 'bg-blue-50 text-blue-700 border border-blue-200'}`}>
-              <Clock size={28} className={timeLeft < 60 ? 'text-red-500' : 'text-blue-600'} />
+            <div className={`flex items-center justify-center gap-3 font-mono text-4xl p-4 rounded-xl font-bold shadow-inner ${timeLeft <= 300 ? 'bg-red-50 text-red-600 border border-red-200 animate-pulse' : 'bg-blue-50 text-blue-700 border border-blue-200'}`}>
+              <Clock size={28} className={timeLeft <= 300 ? 'text-red-500' : 'text-blue-600'} />
               {formatTime(timeLeft)}
             </div>
           )}
@@ -502,11 +509,11 @@ export const QuizGame: React.FC<QuizGameProps> = ({ examTitle, questions, onExit
       </div>
 
       {/* Main Content Area (Right) */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden bg-white relative pb-[env(safe-area-inset-bottom)] md:pb-0">
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-white relative pb-[env(safe-area-inset-bottom)] md:pb-0">
         {/* Main Content Scroll Area - Leave room for Sticky Footer */}
         <div className="flex-1 overflow-y-auto p-4 md:p-10 lg:p-12 pb-32 md:pb-32 hide-scrollbar md:scrollbar-default">
           
-          <div className="max-w-5xl mx-auto h-full flex flex-col mb-20 md:mb-0">
+          <div className="max-w-5xl mx-auto flex flex-col mb-20 md:mb-0 min-h-full">
             {/* Header info for question */}
             <div className="mb-4 md:mb-6 flex items-center justify-between">
               <span className="inline-flex py-1 px-3 md:py-1.5 md:px-4 bg-blue-50 text-blue-700 rounded-lg text-sm md:text-base font-bold border border-blue-200 shadow-sm">
@@ -527,110 +534,111 @@ export const QuizGame: React.FC<QuizGameProps> = ({ examTitle, questions, onExit
               )}
             </div>
 
-            {/* Split View for Question: Text & Image */}
-            <div className={`flex flex-col ${currentQuestion.imageUrl ? 'lg:flex-row gap-6 md:gap-8 lg:gap-12' : ''} mb-8`}>
+            {/* Vertical Flow View: Question -> Image -> Options */}
+            <div className="flex flex-col gap-6 md:gap-8 mb-8 max-w-4xl w-full mx-auto">
               
-              {/* Question Text & Options */}
-              <div className={`flex-1 flex flex-col space-y-4 md:space-y-6 ${currentQuestion.imageUrl ? 'lg:w-1/2' : ''}`}>
-                <h3 className="text-xl md:text-2xl font-bold text-gray-800 leading-snug md:leading-relaxed">
-                  {currentQuestion.content}
-                </h3>
+              {/* 1. Question Text */}
+              <h3 className="text-xl md:text-2xl font-bold text-gray-800 leading-snug md:leading-relaxed">
+                {currentQuestion.content}
+              </h3>
 
-                <div className="space-y-3 mt-2 md:mt-4">
-                  {currentQuestion.options.map((option, index) => {
-                    const userAns = selectedAnswers[currentQuestion.id];
-                    const isAnswered = userAns !== undefined;
-                    const isOptCorrect = index === currentQuestion.correctAnswer;
-                    const isOptUser = index === userAns;
-
-                    let optionClass = 'w-full text-left p-4 md:p-5 rounded-xl border transition-all duration-200 flex items-start gap-4 group ';
-                    
-                    if (focusedOptionIndex === index) {
-                      optionClass += 'ring-2 ring-blue-500 ring-offset-2 scale-[1.02] '; // Visual indicator for keyboard focus
-                    }
-
-                    if (isAnswered && showImmediateExplanation) {
-                      if (isOptCorrect) {
-                        optionClass += 'bg-green-50 border-green-500 text-green-800 shadow-md';
-                      } else if (isOptUser && !isOptCorrect) {
-                        optionClass += 'bg-red-50 border-red-500 text-red-800';
-                      } else {
-                        optionClass += 'bg-gray-50 border-gray-200 text-gray-500 opacity-70';
-                      }
-                    } else {
-                      optionClass += isOptUser 
-                        ? 'bg-blue-50 border-blue-500 text-blue-900 shadow-md scale-[1.01]' 
-                        : 'bg-white hover:bg-blue-50/50 hover:border-blue-300 border-gray-200 text-gray-700';
-                    }
-
-                    return (
-                      <button
-                        key={index}
-                        onClick={() => handleSelectAnswer(index)}
-                        className={optionClass}
-                      >
-                        <div className="flex items-center justify-center flex-shrink-0 mt-0.5">
-                          {isAnswered && showImmediateExplanation ? (
-                            isOptCorrect ? (
-                              <div className="w-7 h-7 rounded-full bg-green-500 flex items-center justify-center text-white shadow-sm">
-                                <CheckCircle size={14} />
-                              </div>
-                            ) : isOptUser ? (
-                              <div className="w-7 h-7 rounded-full bg-red-500 flex items-center justify-center text-white shadow-sm">
-                                <XCircle size={14} />
-                              </div>
-                            ) : (
-                              <div className="w-7 h-7 rounded-full border-2 border-gray-300 flex items-center justify-center text-gray-400">
-                                <span className="text-xs font-bold">{String.fromCharCode(65 + index)}</span>
-                              </div>
-                            )
-                          ) : (
-                            isOptUser ? (
-                              <div className="w-7 h-7 rounded-full bg-blue-500 flex items-center justify-center text-white shadow-sm">
-                                <CheckCircle size={14} strokeWidth={3} />
-                              </div>
-                            ) : (
-                              <div className="w-7 h-7 rounded-full border-2 border-gray-300 group-hover:border-blue-400 flex items-center justify-center text-gray-400 group-hover:text-blue-500 transition-colors">
-                                <span className="text-xs font-bold">{String.fromCharCode(65 + index)}</span>
-                              </div>
-                            )
-                          )}
-                        </div>
-                        <span className="text-lg leading-snug">{option}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-                
-                {/* Explanations (if shown immediately) */}
-                {showImmediateExplanation && selectedAnswers[currentQuestion.id] !== undefined && (
-                  <div className="mt-6 rounded-xl border border-gray-200 bg-gray-50/80 p-5 shadow-inner">
-                    {currentQuestion.explanation && (
-                      <div className="mb-4 text-[17px] leading-relaxed text-gray-700">
-                        <span className="font-bold text-yellow-600 mr-2 text-lg">💡 Giải thích:</span> 
-                        {currentQuestion.explanation}
-                      </div>
-                    )}
-                    <div className="inline-flex bg-white border border-gray-200 rounded-lg p-3 text-sm text-gray-600">
-                      <span className="font-semibold text-gray-500 mr-2">Đáp án đúng:</span>
-                      <strong className="text-green-600 ml-2">{currentQuestion.options[currentQuestion.correctAnswer]}</strong>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Image Area (Takes right half if exists) */}
+              {/* 2. Image Area (Immediately below question if exists) */}
               {currentQuestion.imageUrl && (
-                <div className="w-full lg:w-1/2 flex items-start justify-center pt-2">
-                  <div className="w-full h-40 md:h-auto bg-gray-50/50 p-2 md:p-4 rounded-2xl border border-gray-200 flex items-center justify-center shadow-inner overflow-hidden">
+                <div className="w-full flex items-center justify-center">
+                  <div className="w-full max-w-2xl bg-gray-50/50 p-2 md:p-4 rounded-2xl border border-gray-200 flex items-center justify-center shadow-inner overflow-hidden">
                     <img 
                       src={url +'assets/uploads/'+ currentQuestion.imageUrl} 
                       alt="Hình minh họa" 
-                      className="max-w-full max-h-full object-contain rounded-xl drop-shadow-md" 
+                      className="max-w-full h-auto object-contain rounded-xl drop-shadow-md"
+                      style={{ maxHeight: '45vh' }}
                     />
                   </div>
                 </div>
               )}
+
+              {/* 3. Options Area */}
+              <div className="space-y-3">
+                {currentQuestion.options.map((option, index) => {
+                  const userAns = selectedAnswers[currentQuestion.id];
+                  const isAnswered = userAns !== undefined;
+                  const isOptCorrect = index === currentQuestion.correctAnswer;
+                  const isOptUser = index === userAns;
+
+                  let optionClass = 'w-full h-auto text-left p-4 md:p-5 rounded-xl border transition-all duration-200 flex items-start gap-4 group ';
+                  
+                  if (focusedOptionIndex === index) {
+                    optionClass += 'ring-2 ring-blue-500 ring-offset-2 scale-[1.02] '; // Visual indicator for keyboard focus
+                  }
+
+                  if (isAnswered && showImmediateExplanation) {
+                    if (isOptCorrect) {
+                      optionClass += 'bg-green-50 border-green-500 text-green-800 shadow-md';
+                    } else if (isOptUser && !isOptCorrect) {
+                      optionClass += 'bg-red-50 border-red-500 text-red-800';
+                    } else {
+                      optionClass += 'bg-gray-50 border-gray-200 text-gray-500 opacity-70';
+                    }
+                  } else {
+                    optionClass += isOptUser 
+                      ? 'bg-blue-50 border-blue-500 text-blue-900 shadow-md scale-[1.01]' 
+                      : 'bg-white hover:bg-blue-50/50 hover:border-blue-300 border-gray-200 text-gray-700';
+                  }
+
+                  return (
+                    <button
+                      key={index}
+                      onClick={() => handleSelectAnswer(index)}
+                      className={optionClass}
+                    >
+                      <div className="flex items-center justify-center flex-shrink-0 mt-0.5">
+                        {isAnswered && showImmediateExplanation ? (
+                          isOptCorrect ? (
+                            <div className="w-7 h-7 rounded-full bg-green-500 flex items-center justify-center text-white shadow-sm">
+                              <CheckCircle size={14} />
+                            </div>
+                          ) : isOptUser ? (
+                            <div className="w-7 h-7 rounded-full bg-red-500 flex items-center justify-center text-white shadow-sm">
+                              <XCircle size={14} />
+                            </div>
+                          ) : (
+                            <div className="w-7 h-7 rounded-full border-2 border-gray-300 flex items-center justify-center text-gray-400">
+                              <span className="text-xs font-bold">{String.fromCharCode(65 + index)}</span>
+                            </div>
+                          )
+                        ) : (
+                          isOptUser ? (
+                            <div className="w-7 h-7 rounded-full bg-blue-500 flex items-center justify-center text-white shadow-sm">
+                              <CheckCircle size={14} strokeWidth={3} />
+                            </div>
+                          ) : (
+                            <div className="w-7 h-7 rounded-full border-2 border-gray-300 group-hover:border-blue-400 flex items-center justify-center text-gray-400 group-hover:text-blue-500 transition-colors">
+                              <span className="text-xs font-bold">{String.fromCharCode(65 + index)}</span>
+                            </div>
+                          )
+                        )}
+                      </div>
+                      <span className="text-lg leading-snug break-words whitespace-normal flex-1">{option}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              
+              {/* 4. Explanations (if shown immediately) */}
+              {showImmediateExplanation && selectedAnswers[currentQuestion.id] !== undefined && (
+                <div className="mt-2 rounded-xl border border-gray-200 bg-gray-50/80 p-5 shadow-inner">
+                  {currentQuestion.explanation && (
+                    <div className="mb-4 text-[17px] leading-relaxed text-gray-700">
+                      <span className="font-bold text-yellow-600 mr-2 text-lg">💡 Giải thích:</span> 
+                      {currentQuestion.explanation}
+                    </div>
+                  )}
+                  <div className="inline-flex bg-white border border-gray-200 rounded-lg p-3 text-sm text-gray-600">
+                    <span className="font-semibold text-gray-500 mr-2">Đáp án đúng:</span>
+                    <strong className="text-green-600 ml-2">{currentQuestion.options[currentQuestion.correctAnswer]}</strong>
+                  </div>
+                </div>
+              )}
+
             </div>
             
           </div>
