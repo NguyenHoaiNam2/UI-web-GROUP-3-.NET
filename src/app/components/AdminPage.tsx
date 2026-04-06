@@ -51,17 +51,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({ questions, setQuestions, c
   };
 
   const handleAddNew = () => {
-    setCurrentQuestion({
-      id: '',
-      content: '',
-      options: ['', '', '', ''],
-                        explanation: '',
-                        imageUrl: '',
-      correctAnswer: 0,
-      chapterId: 1,
-      isParalysis: false,
-    });
-    setIsEditing(true);
+    // Removed add new question logic
+    alert('Tính năng thêm câu hỏi đã bị vô hiệu hóa.');
   };
 
   const handleEdit = (q: Question) => {
@@ -116,50 +107,14 @@ export const AdminPage: React.FC<AdminPageProps> = ({ questions, setQuestions, c
       alert('Cập nhật câu hỏi thành công');
       setIsEditing(false);
     } else {
-      // Create via API
-      try {
-        const payload = {
-          content: finalQuestion.content,
-          options: finalQuestion.options,
-          explanation: finalQuestion.explanation || '',
-          imageUrl: finalQuestion.imageUrl || '',
-          correctAnswer: finalQuestion.correctAnswer,
-          chapterId: finalQuestion.chapterId,
-          isParalysis: finalQuestion.isParalysis || false
-        };
-
-        console.log("Đang gửi lên API:", url + 'api/questions', payload);
-
-        const response = await fetch(url + 'api/questions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(payload)
-        });
-
-        if (response.ok) {
-          const addedQuestion = await response.json();
-          const newQuestion = {
-            ...currentQuestion,
-            explanation: currentQuestion.explanation || '',
-            id: addedQuestion.id?.toString() || Math.random().toString(36).slice(2, 11),
-          } as Question;
-          setQuestions(prev => [...prev, newQuestion]);
-          toast.success('Thêm câu hỏi mới thành công (API)');
-          alert('Thêm câu hỏi mới thành công (API)');
-          setIsEditing(false);
-        } else {
-          const errorText = await response.text();
-          console.error("API Error Response:", response.status, errorText);
-          toast.error('Lỗi khi thêm câu hỏi ở máy chủ: ' + response.status);
-          alert('Lỗi từ máy chủ API: ' + response.status + '\n' + errorText);
-        }
-      } catch (error) {
-        console.error('Lỗi kết nối:', error);
-        toast.error('Không thể kết nối với API');
-        alert('Không thể kết nối với API: ' + (error as Error).message);
-      }
+      // Create locally without API call
+      const newQuestion = {
+        ...finalQuestion,
+        id: Math.random().toString(36).slice(2, 11),
+      } as Question;
+      setQuestions(prev => [...prev, newQuestion]);
+      toast.success('Thêm câu hỏi mới thành công');
+      setIsEditing(false);
     }
   };
 
@@ -305,13 +260,11 @@ export const AdminPage: React.FC<AdminPageProps> = ({ questions, setQuestions, c
         } as Question;
       });
 
-      // Merge: keep existing local questions (by id) and add/update from API
+      // Replace local questions with API questions
       let merged: Question[] = [];
-      setQuestions(prev => {
-        const byId = new Map(prev.map(p => [p.id, p]));
-        for (const mq of mapped) byId.set(mq.id, mq);
-        merged = Array.from(byId.values());
-        try { window.localStorage.setItem('questions', JSON.stringify(merged)); } catch {}
+      setQuestions(() => {
+        merged = mapped;
+        try { window.localStorage.removeItem('questions'); } catch {}
         return merged;
       });
 
@@ -402,13 +355,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({ questions, setQuestions, c
                     </div>
                   </div>
                   <div className="flex gap-3 w-full md:w-auto">
-                    <button
-                      onClick={handleAddNew}
-                      className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl shadow-sm flex items-center justify-center gap-2 transition-all transform hover:scale-105 font-medium"
-                    >
-                      <Plus size={20} />
-                      <span>Thêm Câu Hỏi Mới</span>
-                    </button>
                     <button
                       onClick={fetchQuestionsFromServer}
                       className={`w-full md:w-auto bg-green-50 hover:bg-green-100 text-green-700 px-4 py-3 rounded-xl shadow-sm flex items-center justify-center gap-2 transition-all font-medium`}

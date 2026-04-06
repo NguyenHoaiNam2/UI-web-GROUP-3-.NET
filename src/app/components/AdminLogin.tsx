@@ -83,7 +83,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ questions, setQuestions 
           </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 }}>
             <button type="submit" style={{ padding: '8px 14px', background: '#2563eb', color: 'white', borderRadius: 8 }}>Đăng nhập</button>
-            <a href="/" style={{ color: '#6b7280', fontSize: 13 }}>Quay lại trang chính</a>
+            <a href="/home" style={{ color: '#6b7280', fontSize: 13 }}>Quay lại trang chính</a>
           </div>
         </form>
       </div>

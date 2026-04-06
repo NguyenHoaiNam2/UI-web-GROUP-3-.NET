@@ -63,6 +63,7 @@ const App = () => {
       if (typeof window !== 'undefined') {
         // Prefer the current pathname (useful when user navigates directly to /admin)
         const path = window.location.pathname || '/';
+        if (path === '/' || path.startsWith('/home')) return 'HOME';
         if (path === '/admin') return 'ADMIN';
         if (path.startsWith('/intro') || path.startsWith('/gioi-thieu')) return 'INTRO';
         if (path.startsWith('/docs')) return 'DOCS';
@@ -86,18 +87,8 @@ const App = () => {
   });
   const [resetKey, setResetKey] = useState(0);
 
-  // Database questions state (persisted to localStorage)
-  const [questions, setQuestions] = useState<Question[]>(() => {
-    try {
-      const raw = typeof window !== 'undefined' ? window.localStorage.getItem('questions') : null;
-      if (!raw) return [];
-      const parsed = JSON.parse(raw) as Question[];
-      return Array.isArray(parsed) ? parsed : [];
-    } catch (err) {
-      console.error('Failed to load questions from localStorage', err);
-      return [];
-    }
-  });
+  // Database questions state
+  const [questions, setQuestions] = useState<Question[]>([]);
   // Load session on startup: restore token, role and user profile (if available)
   useEffect(() => {
     const init = async () => {
@@ -235,13 +226,8 @@ const App = () => {
           } as Question;
         });
 
-        setQuestions(prev => {
-          const byId = new Map(prev.map(p => [p.id, p]));
-          for (const mq of mapped) byId.set(mq.id, mq);
-          const merged = Array.from(byId.values());
-          try { window.localStorage.setItem('questions', JSON.stringify(merged)); } catch { }
-          return merged;
-        });
+        try { window.localStorage.removeItem('questions'); } catch {}
+        setQuestions(mapped);
       } catch (err) {
         console.warn('Failed to fetch questions from new API', err);
       }
@@ -330,9 +316,9 @@ const App = () => {
     try {
       if (typeof window !== 'undefined') {
         const pathMap: Record<PageKey, string> = {
-          HOME: '/', INTRO: '/intro', THI: '/thi', REVIEW: '/review', CONSULTATION: '/consultation', DOCS: '/docs', PROFILE: '/profile', HISTORY: '/history', PRIVACY: '/privacy', CONTACT: '/contact', ADMIN: '/admin'
+          HOME: '/home', INTRO: '/intro', THI: '/thi', REVIEW: '/review', CONSULTATION: '/consultation', DOCS: '/docs', PROFILE: '/profile', HISTORY: '/history', PRIVACY: '/privacy', CONTACT: '/contact', ADMIN: '/admin'
         };
-        const newPath = pathMap[page] || '/';
+        const newPath = pathMap[page] || '/home';
         window.history.replaceState(null, '', newPath);
         window.localStorage.setItem('currentPage', page);
       }
@@ -341,10 +327,19 @@ const App = () => {
     }
   };
 
-  // Keep localStorage in sync if page changed by other means
+  // Keep localStorage and URL in sync
   useEffect(() => {
     try {
-      if (typeof window !== 'undefined') window.localStorage.setItem('currentPage', currentPage);
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('currentPage', currentPage);
+        const pathMap: Record<PageKey, string> = {
+          HOME: '/home', INTRO: '/intro', THI: '/thi', REVIEW: '/review', CONSULTATION: '/consultation', DOCS: '/docs', PROFILE: '/profile', HISTORY: '/history', PRIVACY: '/privacy', CONTACT: '/contact', ADMIN: '/admin'
+        };
+        const newPath = pathMap[currentPage] || '/home';
+        if (window.location.pathname !== newPath) {
+          window.history.replaceState(null, '', newPath);
+        }
+      }
     } catch { }
   }, [currentPage]);
 
