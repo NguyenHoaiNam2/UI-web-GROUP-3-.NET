@@ -241,19 +241,19 @@ export const ThiPage: React.FC<ThiPageProps> = ({ isAuthenticated, onShowAuth, o
 
   // 2. Màn hình chính (Trang chủ Thi Sát Hạch)
   return (
-  <div className="w-full h-full flex flex-col bg-blue-900/40 backdrop-blur-md animate-fade-in overflow-auto">
-      <div className="flex-1 max-w-7xl mx-auto px-6 py-10 w-full mb-10">
+  <div className="w-full h-full flex flex-col bg-blue-900/40 backdrop-blur-md animate-fade-in overflow-hidden">
+      <div className="flex-1 max-w-7xl mx-auto px-6 py-6 w-full flex flex-col justify-center">
         
         {/* Phần 1: Chọn Văn Bằng */}
         <div>
-          <div className="text-center mb-10">
-            <h2 className="text-3xl font-bold text-white drop-shadow mb-3">Chọn Văn Bằng</h2>
-            <p className="text-white/90 max-w-2xl mx-auto drop-shadow">
+          <div className="text-center mb-6">
+            <h2 className="text-3xl font-bold text-white drop-shadow mb-2">Chọn Văn Bằng</h2>
+            <p className="text-white/90 max-w-2xl mx-auto drop-shadow text-sm">
               Chọn hạng bằng lái xe bạn đang ôn tập để làm các đề thi sát với thực tế nhất.
             </p>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-6 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
             {LICENSE_TYPES.map((license) => (
               <button 
                 key={license.code}
@@ -288,9 +288,9 @@ export const ThiPage: React.FC<ThiPageProps> = ({ isAuthenticated, onShowAuth, o
                   </p>
                 </div>
                 
-                <div className="flex items-center text-sm font-bold text-gray-400 group-hover:text-current transition-colors mt-6 pt-4 border-t border-gray-100 w-full">
+                <div className="flex items-center text-xs font-bold text-gray-400 group-hover:text-current transition-colors mt-4 pt-3 border-t border-gray-100 w-full">
                   <span>Vào thi ngay</span>
-                  <ArrowLeft className="w-5 h-5 ml-2 rotate-180 transition-transform group-hover:translate-x-2" />
+                  <ArrowLeft className="w-4 h-4 ml-2 rotate-180 transition-transform group-hover:translate-x-2" />
                 </div>
               </button>
             ))}
@@ -298,14 +298,14 @@ export const ThiPage: React.FC<ThiPageProps> = ({ isAuthenticated, onShowAuth, o
         </div>
 
         {/* Divider */}
-        <div className="flex items-center gap-4 my-10">
+        <div className="flex items-center gap-4 my-6">
           <div className="h-px bg-gray-200 flex-1"></div>
-          <span className="text-gray-400 font-medium text-sm uppercase tracking-wider">Hoặc</span>
+          <span className="text-gray-400 font-medium text-xs uppercase tracking-wider">Hoặc</span>
           <div className="h-px bg-gray-200 flex-1"></div>
         </div>
 
         {/* Phần 2: Hành động nhanh (Thi thử & Lịch sử) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           {/* Card Thi Thử */}
           <button 
             onClick={async () => {
@@ -386,21 +386,21 @@ export const ThiPage: React.FC<ThiPageProps> = ({ isAuthenticated, onShowAuth, o
                 topic: "Thời gian: 22 phút - 30 câu hỏi (Sinh tự động)" 
               });
             }}
-            className="bg-gradient-to-br from-blue-600 to-blue-500 rounded-2xl p-8 text-white shadow-lg hover:shadow-blue-500/40 transform hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group text-left"
+            className="bg-gradient-to-br from-blue-600 to-blue-500 rounded-2xl p-6 text-white shadow-lg hover:shadow-blue-500/40 transform hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group text-left"
           >
-            <div className="absolute top-0 right-0 p-8 opacity-20 transform group-hover:scale-110 transition-transform duration-500">
-              <PlayCircle size={120} />
+            <div className="absolute top-0 right-0 p-6 opacity-20 transform group-hover:scale-110 transition-transform duration-500">
+              <PlayCircle size={90} />
             </div>
             <div className="relative z-10">
-              <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center mb-6">
-                <PlayCircle size={32} className="text-white" />
+              <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center mb-4">
+                <PlayCircle size={28} className="text-white" />
               </div>
-              <h3 className="text-3xl font-bold mb-2">Thi Thử Ngẫu Nhiên</h3>
-              <p className="text-blue-100 text-lg mb-6 max-w-md">
-                Làm bài thi được tạo ngẫu nhiên giống như thi thật. Kiểm tra kiến thức tổng quát của bạn.
+              <h3 className="text-2xl font-bold mb-2">Thi Thử Ngẫu Nhiên</h3>
+              <p className="text-blue-100 text-sm mb-4 max-w-md line-clamp-2">
+                Làm bài thi được tạo ngẫu nhiên giống như thi thật.
               </p>
-              <div className="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 px-6 py-3 rounded-xl backdrop-blur-sm transition-colors font-semibold">
-                Bắt đầu ngay <ArrowLeft className="rotate-180" size={20} />
+              <div className="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 px-4 py-2 rounded-xl backdrop-blur-sm transition-colors text-sm font-semibold">
+                Bắt đầu ngay <ArrowLeft className="w-4 h-4 rotate-180" />
               </div>
             </div>
           </button>
@@ -414,42 +414,29 @@ export const ThiPage: React.FC<ThiPageProps> = ({ isAuthenticated, onShowAuth, o
                 onShowAuth();
               }
             }}
-            className="bg-white rounded-2xl p-8 border border-gray-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group text-left"
+            className="bg-white rounded-2xl p-6 border border-gray-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group text-left"
           >
-             <div className="absolute top-0 right-0 p-8 text-gray-100 transform group-hover:scale-110 transition-transform duration-500">
-              <History size={120} />
+             <div className="absolute top-0 right-0 p-6 text-gray-100 transform group-hover:scale-110 transition-transform duration-500">
+              <History size={90} />
             </div>
             <div className="relative z-10">
-              <div className="w-14 h-14 bg-purple-100 rounded-xl flex items-center justify-center mb-6">
-                <History size={32} className="text-purple-600" />
+              <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mb-4">
+                <History size={28} className="text-purple-600" />
               </div>
-              <h3 className="text-3xl font-bold text-gray-900 mb-2">Lịch Sử Làm Bài</h3>
-              <p className="text-gray-600 text-lg mb-6 max-w-md">
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">Lịch Sử Làm Bài</h3>
+              <p className="text-gray-600 text-sm mb-4 max-w-md line-clamp-2">
                 {isAuthenticated 
-                  ? "Xem lại kết quả các bài thi bạn đã thực hiện để theo dõi sự tiến bộ." 
-                  : "Đăng nhập để lưu lại kết quả thi và theo dõi tiến trình học tập của bạn."}
+                  ? "Xem lại kết quả bài thi để theo dõi sự tiến bộ." 
+                  : "Đăng nhập để lưu kết quả thi của bạn."}
               </p>
-              <div className="inline-flex items-center gap-2 bg-gray-100 group-hover:bg-purple-50 text-gray-700 group-hover:text-purple-700 px-6 py-3 rounded-xl transition-colors font-semibold">
-                {isAuthenticated ? "Xem lịch sử" : "Đăng nhập ngay"} <ArrowLeft className="rotate-180" size={20} />
+              <div className="inline-flex items-center gap-2 bg-gray-100 group-hover:bg-purple-50 text-gray-700 group-hover:text-purple-700 px-4 py-2 rounded-xl transition-colors text-sm font-semibold">
+                {isAuthenticated ? "Xem lịch sử" : "Đăng nhập ngay"} <ArrowLeft className="w-4 h-4 rotate-180" />
               </div>
             </div>
           </button>
         </div>
 
-        {/* Tips / Info Banner removed per request */}
-
       </div>
-
-      {/* Small footer with basic info (copied from HomePage) */}
-      <footer className="bg-white border-t">
-        <div className="container mx-auto px-8 py-4">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-2 text-sm text-gray-700">
-            <div className="font-bold text-gray-900">GROUP 3 .NET TECH</div>
-            <div>Hotline: <a href="tel:333-88-222-55" className="text-blue-600 hover:underline">333-88-222-55</a></div>
-            <div className="text-gray-500">© {new Date().getFullYear()} Nhóm 3. All rights reserved.</div>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 };

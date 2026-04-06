@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Plus, Trash2, Edit, Save, X, Search, AlertTriangle, Layers, Download, Eye, FileText, BookOpen, Settings, RefreshCw, LayoutDashboard, Users, FileEdit, BarChart, ChevronLeft, ChevronRight, CheckCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, Trash2, Edit, Save, X, Search, AlertTriangle, Layers, Download, Eye, FileText, BookOpen, Settings, RefreshCw, LayoutDashboard, Users, FileEdit, BarChart, ChevronLeft, ChevronRight, CheckCircle, Loader2, Image as ImageIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 
@@ -21,11 +21,35 @@ export const AdminPage: React.FC<AdminPageProps> = ({ questions, setQuestions, c
   const [filterChapter, setFilterChapter] = useState<number | 'ALL'>('ALL');
   const [filterParalysis, setFilterParalysis] = useState<boolean | 'ALL'>('ALL');
 
+  // Image Gallery State
+  const [isImageGalleryOpen, setIsImageGalleryOpen] = useState(false);
+  const [serverImages, setServerImages] = useState<string[]>([]);
+  const [isLoadingImages, setIsLoadingImages] = useState(false);
+
   // Pagination for questions
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
   // Form Handlers
+  const fetchServerImages = async () => {
+    setIsLoadingImages(true);
+    setIsImageGalleryOpen(true);
+    try {
+      const res = await fetch(url + 'assets/uploads/'); 
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) setServerImages(data);
+      } else {
+        toast.error('Chưa lấy được list hình ảnh. Có thể máy chủ chưa cấu hình API tại assets/uploads/');
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error('Lỗi khi tải danh sách hình ảnh từ máy chủ');
+    } finally {
+      setIsLoadingImages(false);
+    }
+  };
+
   const handleAddNew = () => {
     setCurrentQuestion({
       id: '',
@@ -65,27 +89,78 @@ export const AdminPage: React.FC<AdminPageProps> = ({ questions, setQuestions, c
     toast.success('Đã xóa toàn bộ câu hỏi');
   };
 
-  const handleSave = () => {
-    if (!currentQuestion.content || !currentQuestion.options?.every(o => o.trim() !== '')) {
-      toast.error('Vui lòng điền đầy đủ nội dung câu hỏi và các đáp án');
+  const handleSave = async () => {
+    const filledOptions = currentQuestion.options?.filter(o => o.trim() !== '') || [];
+    if (!currentQuestion.content || filledOptions.length < 2) {
+      toast.error('Vui lòng điền đầy đủ nội dung câu hỏi và ít nhất 2 đáp án');
+      alert('Vui lòng điền đầy đủ nội dung câu hỏi và ít nhất 2 đáp án!');
       return;
     }
 
-    if (currentQuestion.id) {
+    // Filter out blank options before saving
+    const trimmedOptions = currentQuestion.options?.map(o => o.trim()).filter(o => o !== '') || [];
+    const validCorrectAnswer = currentQuestion.correctAnswer !== undefined && currentQuestion.correctAnswer < trimmedOptions.length 
+      ? currentQuestion.correctAnswer 
+      : 0;
+
+    const finalQuestion = {
+      ...currentQuestion,
+      options: trimmedOptions,
+      correctAnswer: validCorrectAnswer
+    };
+
+    if (finalQuestion.id) {
       // Update
-      setQuestions(prev => prev.map(q => q.id === currentQuestion.id ? currentQuestion as Question : q));
+      setQuestions(prev => prev.map(q => q.id === finalQuestion.id ? finalQuestion as Question : q));
       toast.success('Cập nhật câu hỏi thành công');
+      alert('Cập nhật câu hỏi thành công');
+      setIsEditing(false);
     } else {
-      // Create
-      const newQuestion = {
-        ...currentQuestion,
-                                        explanation: currentQuestion.explanation || '',
-        id: Math.random().toString(36).slice(2, 11),
-      } as Question;
-      setQuestions(prev => [...prev, newQuestion]);
-      toast.success('Thêm câu hỏi mới thành công');
+      // Create via API
+      try {
+        const payload = {
+          content: finalQuestion.content,
+          options: finalQuestion.options,
+          explanation: finalQuestion.explanation || '',
+          imageUrl: finalQuestion.imageUrl || '',
+          correctAnswer: finalQuestion.correctAnswer,
+          chapterId: finalQuestion.chapterId,
+          isParalysis: finalQuestion.isParalysis || false
+        };
+
+        console.log("Đang gửi lên API:", url + 'api/questions', payload);
+
+        const response = await fetch(url + 'api/questions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (response.ok) {
+          const addedQuestion = await response.json();
+          const newQuestion = {
+            ...currentQuestion,
+            explanation: currentQuestion.explanation || '',
+            id: addedQuestion.id?.toString() || Math.random().toString(36).slice(2, 11),
+          } as Question;
+          setQuestions(prev => [...prev, newQuestion]);
+          toast.success('Thêm câu hỏi mới thành công (API)');
+          alert('Thêm câu hỏi mới thành công (API)');
+          setIsEditing(false);
+        } else {
+          const errorText = await response.text();
+          console.error("API Error Response:", response.status, errorText);
+          toast.error('Lỗi khi thêm câu hỏi ở máy chủ: ' + response.status);
+          alert('Lỗi từ máy chủ API: ' + response.status + '\n' + errorText);
+        }
+      } catch (error) {
+        console.error('Lỗi kết nối:', error);
+        toast.error('Không thể kết nối với API');
+        alert('Không thể kết nối với API: ' + (error as Error).message);
+      }
     }
-    setIsEditing(false);
   };
 
   const handleOptionChange = (index: number, value: string) => {
@@ -259,7 +334,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({ questions, setQuestions, c
     }
   };
 
-
+  useEffect(() => {
+    fetchQuestionsFromServer();
+  }, []);
 
   return (
     <>
@@ -591,32 +668,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({ questions, setQuestions, c
                         </div>
                     </div>
 
-          {/* Image URL (moved above question content) */}
-          <div className="mt-4">
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Hình ảnh (URL) — tuỳ chọn</label>
-            <div className="flex gap-3">
-              <input
-                type="text"
-                value={currentQuestion.imageUrl || ''}
-                onChange={(e) => setCurrentQuestion({ ...currentQuestion, imageUrl: e.target.value })}
-                placeholder="https://... hoặc đường dẫn tới ảnh"
-                className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 focus:bg-white transition-all"
-              />
-              <button
-                type="button"
-                onClick={() => setCurrentQuestion({ ...currentQuestion, imageUrl: '' })}
-                className="px-4 py-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl transition-colors"
-              >
-                Xóa
-              </button>
-            </div>
-            {currentQuestion.imageUrl && (
-              <div className="mt-3">
-                <img src={currentQuestion.imageUrl} alt="preview" className="max-h-40 rounded-lg border border-gray-200 shadow-sm" />
-              </div>
-            )}
-          </div>
-
           {/* Question Content */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">Nội dung câu hỏi</label>
@@ -627,6 +678,48 @@ export const AdminPage: React.FC<AdminPageProps> = ({ questions, setQuestions, c
               className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none resize-none"
               placeholder="Nhập nội dung câu hỏi..."
             />
+          </div>
+
+          {/* Image Selection Button */}
+          <div className="mt-4 mb-2">
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Hình ảnh đính kèm (tuỳ chọn)</label>
+            <div className="flex gap-3 items-center">
+              <button
+                type="button"
+                onClick={fetchServerImages}
+                className="px-6 py-3 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-xl font-medium transition-colors border border-blue-200"
+              >
+                {currentQuestion.imageUrl ? 'Đổi hình ảnh' : 'Chọn hình ảnh từ máy chủ...'}
+              </button>
+              
+              {currentQuestion.imageUrl && (
+                <button
+                  type="button"
+                  onClick={() => setCurrentQuestion({ ...currentQuestion, imageUrl: '' })}
+                  className="px-6 py-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl transition-colors font-medium border border-red-100"
+                >
+                  Xóa / Bỏ chọn
+                </button>
+              )}
+            </div>
+            
+            {currentQuestion.imageUrl && (
+              <div className="mt-4 bg-gray-50 p-4 rounded-xl border border-gray-200 inline-block w-full text-center">
+                <p className="text-xs text-gray-500 mb-3 truncate flex items-center justify-center gap-1">
+                  Đang chọn: <span className="font-mono bg-gray-200 px-1.5 py-0.5 rounded text-gray-600">{currentQuestion.imageUrl}</span>
+                </p>
+                <img 
+                  src={url + 'assets/uploads/' + currentQuestion.imageUrl} 
+                  alt="preview" 
+                  className="max-h-48 mx-auto rounded-lg border border-gray-200 shadow-md bg-white object-contain" 
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    target.parentElement?.insertAdjacentHTML('beforeend', '<p class="text-sm text-red-500 mt-2">Không tìm thấy ảnh trên máy chủ!</p>');
+                  }}
+                />
+              </div>
+            )}
           </div>
 
                     {/* (Giải thích moved below options) */}
@@ -682,7 +775,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ questions, setQuestions, c
                         </button>
 
                         {/* Explanation */}
-                        <div className="mt-6">
+                        <div className="mt-6 mb-6">
                             <label className="block text-sm font-semibold text-gray-700 mb-2">Giải thích (tuỳ chọn)</label>
                             <textarea
                                 value={currentQuestion.explanation || ''}
@@ -692,32 +785,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({ questions, setQuestions, c
                                 placeholder="Nhập phần giải thích cho câu hỏi (ví dụ: tại sao đáp án này đúng, các chú ý...)"
                             />
                         </div>
-
-              {/* Image URL */}
-              <div className="mt-4">
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Hình ảnh (URL) — tuỳ chọn</label>
-                <div className="flex gap-3">
-                  <input
-                    type="text"
-                    value={currentQuestion.imageUrl || ''}
-                    onChange={(e) => setCurrentQuestion({ ...currentQuestion, imageUrl: e.target.value })}
-                    placeholder="https://... hoặc đường dẫn tới ảnh"
-                    className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 focus:bg-white transition-all"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setCurrentQuestion({ ...currentQuestion, imageUrl: '' })}
-                    className="px-4 py-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl transition-colors"
-                  >
-                    Xóa
-                  </button>
-                </div>
-                {currentQuestion.imageUrl && (
-                  <div className="mt-3">
-                    <img src={currentQuestion.imageUrl} alt="preview" className="max-h-40 rounded-lg border border-gray-200 shadow-sm" />
-                  </div>
-                )}
-              </div>
                     </div>
                 </div>
 
@@ -779,6 +846,80 @@ export const AdminPage: React.FC<AdminPageProps> = ({ questions, setQuestions, c
             </motion.div>
           )}
         </AnimatePresence>
+
+      {/* Máy chủ / Image Selection Modal */}
+      <AnimatePresence>
+        {isImageGalleryOpen && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">
+            <motion.div initial={{ scale: 0.98, opacity: 0, y: 10 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.98, opacity: 0, y: 10 }} className="bg-white w-full max-w-5xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+              <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50 shrink-0">
+                <div>
+                  <h3 className="font-bold text-xl text-gray-800 flex items-center gap-2">
+                    <ImageIcon className="text-blue-600" /> Thư viện hình ảnh trên máy chủ
+                  </h3>
+                  <p className="text-sm text-gray-500 mt-1">Chọn một hình ảnh có sẵn từ máy chủ làm ảnh tải lên.</p>
+                </div>
+                <button onClick={() => setIsImageGalleryOpen(false)} className="p-3 text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded-xl transition-all">
+                  <X size={24} />
+                </button>
+              </div>
+              
+              <div className="p-6 overflow-y-auto flex-1 bg-gray-50/50">
+                {isLoadingImages ? (
+                  <div className="flex flex-col items-center justify-center py-20 h-full">
+                     <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-4" />
+                     <p className="text-gray-500 font-medium">Đang tải danh sách hình ảnh từ máy chủ...</p>
+                  </div>
+                ) : serverImages.length === 0 ? (
+                  <div className="text-center py-20 px-4 h-full flex flex-col items-center justify-center">
+                    <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                      <ImageIcon className="text-gray-400 w-10 h-10" />
+                    </div>
+                    <p className="text-gray-800 font-bold mb-2">Không tìm thấy hình ảnh nào</p>
+                    <p className="text-gray-500 max-w-sm mx-auto">Chưa có hình ảnh nào trên máy chủ hoặc API lấy danh sách ảnh (api/images) chưa được cấu hình trả về dữ liệu.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                    {serverImages.map((imgName, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => {
+                          setCurrentQuestion({ ...currentQuestion, imageUrl: imgName });
+                          setIsImageGalleryOpen(false);
+                        }}
+                        className={`group relative rounded-xl overflow-hidden border-2 transition-all bg-white shadow-sm hover:shadow-md ${currentQuestion.imageUrl === imgName ? 'border-blue-500 ring-4 ring-blue-500/20 scale-[1.02] z-10' : 'border-gray-200 hover:border-blue-300'}`}
+                      >
+                        <div className="aspect-[4/3] bg-gray-50/50 flex items-center justify-center p-3 relative">
+                          <div className="absolute inset-0 bg-blue-500/0 group-hover:bg-blue-500/10 transition-colors" />
+                          <img 
+                            src={url + 'assets/uploads/' + imgName} 
+                            alt={imgName} 
+                            className="max-w-full max-h-full object-contain drop-shadow-sm group-hover:scale-105 transition-transform duration-300"
+                            loading="lazy"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.onerror = null;
+                              target.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="%23ccc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="9" x2="15" y2="15"></line><line x1="15" y1="9" x2="9" y2="15"></line></svg>';
+                            }}
+                          />
+                        </div>
+                        <div className="bg-white border-t border-gray-100 flex items-center p-2.5">
+                          <p className="text-gray-700 text-xs font-semibold truncate flex-1 text-left" title={imgName}>
+                            {imgName}
+                          </p>
+                          {currentQuestion.imageUrl === imgName && (
+                            <CheckCircle size={16} className="text-blue-600 shrink-0 ml-2" />
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 };
