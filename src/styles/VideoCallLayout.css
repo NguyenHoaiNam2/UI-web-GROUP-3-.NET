@@ -106,23 +106,42 @@ body {
 /* BUTTON */
 .controls {
     position: absolute;
-    bottom: 20px;
+    bottom: 30px;
     left: 50%;
     transform: translateX(-50%);
     display: flex;
+    flex-wrap: nowrap;     
     gap: 10px;
-    flex-wrap: wrap;
+    overflow-x: auto;
+    padding: 8px 0;
 }
 
 .controls button {
-    padding: 10px 15px;
+    padding: 12px 20px;           /* Tăng padding ngang để button rộng hơn */
+    min-width: 130px;
+
     border: 2px solid black;
     background: white;
     cursor: pointer;
 }
 
 .controls button:hover {
-    background: gray;
+    background: #333;
+    color: white;
+    border-color: #333;
+}
+
+/* Nút "Kết Thúc Cuộc Gọi" nổi bật và rộng hơn một chút */
+.controls button:last-child {
+    background: #f44336;
+    color: white;
+    border-color: #f44336;
+    font-weight: bold;
+    min-width: 150px;             /* Nút kết thúc rộng hơn các nút khác */
+}
+
+.controls button:last-child:hover {
+    background: #d32f2f;
 }
 
 /* SIDEBAR */

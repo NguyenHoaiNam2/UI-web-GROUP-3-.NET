@@ -132,13 +132,17 @@ export const useWebRTC = (
 
         // Connection state
         pc.onconnectionstatechange = () => {
-            console.log("🔗 Connection state:", pc.connectionState);
+        console.log("🔗 Connection state changed:", pc.connectionState);
 
-            if (pc.connectionState === "connected") {
-                console.log("✅ WebRTC CONNECTED");
-            }
-        };
-
+        if (pc.connectionState === "disconnected" || 
+            pc.connectionState === "failed" || 
+            pc.connectionState === "closed") {
+            
+            console.log("🛑 Remote peer disconnected (F5 hoặc đóng tab)");
+            setRemoteVideoStream(null);     // Xóa video remote ngay
+            setRemoteAudioStream(null);     // Xóa audio remote (nếu có)
+        }
+    };
         return pc;
     };
 
@@ -225,63 +229,52 @@ export const useWebRTC = (
             console.error("❌ ICE error:", err);
         }
     };
-    // ===================== WEBCAM =====================
+    // ===================== VIDEO TRACK MANAGEMENT =====================
     const videoSenderRef = useRef<RTCRtpSender | null>(null);
 
-    useEffect(() => {
-        if (!localVideoStream) return;
-
-        const pc = pcRef.current;
-        if (!pc) {
-            console.warn("⚠️ PeerConnection chưa sẵn sàng");
-            return;
-        }
-
-        const videoTrack = localVideoStream.getVideoTracks()[0];
-        if (!videoTrack) return;
-
-        const addOrReplaceVideo = async () => {
-            if (videoSenderRef.current) {
-                await videoSenderRef.current.replaceTrack(videoTrack);
-                console.log("🔁 Replace video track");
-            } else {
-                const sender = pc.addTrack(videoTrack, localVideoStream);
-                videoSenderRef.current = sender;
-                console.log("📹 Add video track");
-
-                // 🔥 renegotiate
-                const offer = await pc.createOffer();
-                await pc.setLocalDescription(offer);
-
-                if (partnerId) {
-                    await sendOffer({
-                        sdp: offer.sdp,
-                        toUserId: partnerId
-                    });
-                }
-
-                console.log("🔁 Renegotiation for video");
-            }
-        };
-
-        addOrReplaceVideo();
-
-    }, [localVideoStream, partnerId, isInCall]);
     useEffect(() => {
         const pc = pcRef.current;
         if (!pc) return;
 
-        if (!localVideoStream && videoSenderRef.current) {
-            videoSenderRef.current.replaceTrack(null);
-
-            if (partnerId) {
-                connection?.invoke("SendCameraOff", partnerId);
+        // Trường hợp tắt video hoàn toàn
+        if (!localVideoStream) {
+            if (videoSenderRef.current) {
+                console.log("📴 replaceTrack(null) - tắt video");
+                videoSenderRef.current.replaceTrack(null).catch(console.error);
             }
-
-            videoSenderRef.current = null;
-            console.log("📴 Remove video track");
+            return;
         }
-    }, [localVideoStream]);
+
+        // Có stream video (camera hoặc screen)
+        const videoTrack = localVideoStream.getVideoTracks()[0];
+        if (!videoTrack) return;
+
+        const processVideo = async () => {
+            try {
+                if (videoSenderRef.current) {
+                    console.log("🔁 replaceTrack video");
+                    await videoSenderRef.current.replaceTrack(videoTrack);
+                    return;
+                }
+
+                // Chỉ addTrack lần đầu tiên trong suốt cuộc gọi
+                console.log("📹 addTrack video lần đầu");
+                const sender = pc.addTrack(videoTrack, localVideoStream);
+                videoSenderRef.current = sender;
+
+                // Renegotiate chỉ 1 lần
+                const offer = await pc.createOffer();
+                await pc.setLocalDescription(offer);
+                if (partnerId) {
+                    await sendOffer({ sdp: offer.sdp, toUserId: partnerId });
+                }
+            } catch (err) {
+                console.error("❌ Video track error:", err);
+            }
+        };
+
+        processVideo();
+    }, [localVideoStream, partnerId, connection, sendOffer]);   // dependencies rõ ràng
     // ===================== SIGNALR LISTENER =====================
     useEffect(() => {
         if (!connection) return;
@@ -289,15 +282,11 @@ export const useWebRTC = (
         connection.on("ReceiveOffer", handleReceiveOffer);
         connection.on("ReceiveAnswer", handleReceiveAnswer);
         connection.on("ReceiveIceCandidate", handleReceiveIce);
-        connection.on("CameraOff", () => {
-            console.log("📴 Remote camera OFF");
-            setRemoteVideoStream(null);
-        });
+
         return () => {
             connection.off("ReceiveOffer", handleReceiveOffer);
             connection.off("ReceiveAnswer", handleReceiveAnswer);
             connection.off("ReceiveIceCandidate", handleReceiveIce);
-            connection.off("CameraOff");
         };
     }, [connection]);
     //Auto CONNECT khi isInCall = true và có partnerId

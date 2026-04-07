@@ -5,7 +5,7 @@ import { useMicHook } from "../hooks/useMicHook";
 import { useWebRTC } from "../hooks/useWebRTCHook";
 import { useAudioVisualizer } from "../hooks/useAudioVisualizer";
 import { useWebcamHook } from "../hooks/useWebcamHook";
-
+import { useShareScreenHook } from "../hooks/useShareScreenHook";
 interface Props {
     onEndCall: () => void;
     onMinimize: () => void; // thêm prop
@@ -14,18 +14,19 @@ interface Props {
 const VideoCallLayout: React.FC<Props> = ({ onEndCall, onMinimize }) => {
 
     // === Webcam Hook ===
-    const { isCamOn, toggleWebcam, localStream, videoRef, error } = useWebcamHook();
+    const { isCamOn, toggleWebcam, localStream: cameraStream, videoRef, error } = useWebcamHook();
     const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
 
+    // === Share Screen Hook ===
+    const { isSharing, startShareScreen, stopShareScreen, screenStream } = useShareScreenHook();
+    const [activeStream, setActiveStream] = useState<MediaStream | null>(null);
+
+
     const { chatMessages, sendMessage: sendMessageFromContext, currentCallPartnerId, currentCallCallerId, isInCall } = useSignalR();
-    const { toggleMute, isMuted, remoteVideoStream, remoteAudioStream, cleanup } = useWebRTC(currentCallPartnerId, isInCall, currentCallCallerId, localStream);
+    const { toggleMute, isMuted, remoteVideoStream, remoteAudioStream, cleanup } = useWebRTC(currentCallPartnerId, isInCall, currentCallCallerId, activeStream);
 
 
 
-
-
-    const [isSharing, setIsSharing] = useState(false);
-    const [isViewingScreen, setIsViewingScreen] = useState(false);
     //Voice
     const barsRef = useRef<HTMLDivElement[]>([]);
     const { toggleMic } = useMicHook(barsRef);
@@ -46,14 +47,13 @@ const VideoCallLayout: React.FC<Props> = ({ onEndCall, onMinimize }) => {
         // Xóa ô nhập
         setInputText("");
     };
-
     const handleMic = () => {
         toggleMic();
         toggleMute();
     };
     const handleEndCall = async () => {
-        if (localStream) {
-            localStream.getTracks().forEach(track => track.stop());
+        if (cameraStream) {
+            cameraStream.getTracks().forEach(track => track.stop());
         }
         cleanup();
         onEndCall();
@@ -61,7 +61,44 @@ const VideoCallLayout: React.FC<Props> = ({ onEndCall, onMinimize }) => {
     const handleKeyPress = (e: KeyboardEvent<HTMLInputElement>) => {
         if (e.key === "Enter") handleSendMessage();
     };
+    const handleToggleCamera = async () => {
+        if (isSharing) {
+            stopShareScreen();
+        }
 
+        const returnedStream = await toggleWebcam();
+
+        // Không set null khi tắt camera → giữ stream cũ để replaceTrack sau này
+        if (returnedStream) {
+            setActiveStream(returnedStream);
+        }
+        // Nếu toggleWebcam trả về null → nghĩa là vừa tắt, nhưng chúng ta KHÔNG set null
+        // để useWebRTC chỉ replaceTrack(null) thay vì destroy sender
+    };
+
+    const handleShareScreen = async () => {
+        if (isSharing) {
+            stopShareScreen();
+            // Quay về camera
+            if (isCamOn && cameraStream) {
+                setActiveStream(cameraStream);
+                // Force update local preview
+                if (videoRef.current) {
+                    videoRef.current.srcObject = cameraStream;
+                }
+            }
+            return;
+        }
+
+        if (isCamOn) {
+            await toggleWebcam();
+        }
+
+        const newScreenStream = await startShareScreen();
+        if (newScreenStream) {
+            setActiveStream(newScreenStream);
+        }
+    };
     useEffect(() => {
         if (autoScroll) {
             messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -79,6 +116,24 @@ const VideoCallLayout: React.FC<Props> = ({ onEndCall, onMinimize }) => {
             video.load(); // 🔥 BẮT BUỘC để clear frame
         }
     }, [remoteVideoStream]);
+    useEffect(() => {
+    if (videoRef.current) {
+        if (activeStream) {
+            // Clear trước rồi set lại để tránh stale frame
+            videoRef.current.srcObject = null;
+            setTimeout(() => {
+                if (videoRef.current) {
+                    videoRef.current.srcObject = activeStream;
+                    videoRef.current.play().catch(err => 
+                        console.warn("Local video autoplay failed:", err)
+                    );
+                }
+            }, 20);
+        } else {
+            videoRef.current.srcObject = null;
+        }
+    }
+}, [activeStream]);
     return (
         <div className="call-container">
             {/* MAIN */}
@@ -88,15 +143,7 @@ const VideoCallLayout: React.FC<Props> = ({ onEndCall, onMinimize }) => {
                 <div className="remote-view-container">
                     {/* Khu vực hiển thị video / screenshare của người kia */}
                     <div className="remote-video-wrapper">
-                        {isViewingScreen ? (
-                            <div className="remote-screen">
-                                {/* Sau này bạn sẽ truyền remoteScreenStream vào đây */}
-                                <div className="placeholder-screen">
-                                    <p> Đang xem màn hình chia sẻ của người kia</p>
-                                    <small>Chưa nhận được stream</small>
-                                </div>
-                            </div>
-                        ) : (
+                        
                             <div className="remote-camera">
                                 <video
                                     ref={remoteVideoRef}
@@ -104,19 +151,13 @@ const VideoCallLayout: React.FC<Props> = ({ onEndCall, onMinimize }) => {
                                     playsInline
                                     className={`remote-video ${!remoteVideoStream ? "hidden" : ""}`}
                                 />
-
-                                {!remoteVideoStream && (
-                                    <div className="no-remote-video">
-                                        <p>📷 Camera của người kia đang tắt</p>
-                                    </div>
-                                )}
                             </div>
-                        )}
+
                     </div>
                 </div>
 
                 <div className="controls">
-                    <button onClick={toggleWebcam}>
+                    <button onClick={handleToggleCamera}>
                         {isCamOn ? "Tắt Camera" : "Bật Camera"}
                     </button>
 
@@ -124,19 +165,10 @@ const VideoCallLayout: React.FC<Props> = ({ onEndCall, onMinimize }) => {
                         {isMuted ? "Bật Micro" : "Tắt Micro"}
                     </button>
 
-                    <button onClick={() => setIsSharing(!isSharing)}>
+                    <button onClick={handleShareScreen}>
                         {isSharing ? "Dừng Chia Sẻ" : "Chia Sẻ Màn Hình"}
                     </button>
 
-                    <button
-                        onClick={() => setIsViewingScreen(!isViewingScreen)}
-                        className={`view-toggle-btn ${isViewingScreen ? 'viewing-screen' : 'viewing-camera'}`}
-                    >
-                        {isViewingScreen
-                            ? "Xem Camera"
-                            : "Xem Màn Hình Chia Sẻ"
-                        }
-                    </button>
 
                     <button onClick={onMinimize}>
                         Thu nhỏ màn hình
@@ -232,13 +264,14 @@ const VideoCallLayout: React.FC<Props> = ({ onEndCall, onMinimize }) => {
                     <div className="title">Camera của bạn</div>
 
                     <div className="cam-container">
-                        {isCamOn && localStream ? (
+                        {isCamOn && cameraStream ? (
                             <video
                                 ref={videoRef}
                                 autoPlay
                                 playsInline
                                 muted
                                 className="local-video"
+                                key={`local-video-${isCamOn}`}   // Force re-render khi isCamOn thay đổi
                             />
                         ) : (
                             <div className="cam-off">
