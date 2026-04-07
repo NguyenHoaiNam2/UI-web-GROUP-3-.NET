@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useSignalR } from "../contexts/SignalRContext";
 
-export const useWebRTC = (partnerId: string | null, isInCall: boolean, callerId: string | null) => {
+export const useWebRTC = (
+    partnerId: string | null,
+    isInCall: boolean,
+    callerId: string | null,
+    localVideoStream?: MediaStream | null
+) => {
     const {
         connection,
         sendOffer,
@@ -16,10 +21,12 @@ export const useWebRTC = (partnerId: string | null, isInCall: boolean, callerId:
     const myUserId = localStorage.getItem("userId");
     const isCaller = myUserId === callerId;
 
+    const [remoteAudioStream, setRemoteAudioStream] = useState<MediaStream | null>(null);
+    const [remoteVideoStream, setRemoteVideoStream] = useState<MediaStream | null>(null);
+
     const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
     const localStreamRef = useRef<MediaStream | null>(null);
     const audioTrackRef = useRef<MediaStreamTrack | null>(null);
-    const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
 
     const [isMuted, setIsMuted] = useState(false);
 
@@ -72,15 +79,34 @@ export const useWebRTC = (partnerId: string | null, isInCall: boolean, callerId:
         });
 
         pc.ontrack = (event) => {
-            console.log("🔊 Remote audio received");
-            const remoteStream = event.streams[0];
-            setRemoteStream(remoteStream);
+            const track = event.track;
 
-            if (!remoteAudioRef.current) {
-                remoteAudioRef.current = new Audio();
+            console.log("🎯 Track received:", track.kind);
+
+            if (track.kind === "audio") {
+                const audioStream = new MediaStream([track]);
+                setRemoteAudioStream(audioStream);
+
+                if (!remoteAudioRef.current) {
+                    remoteAudioRef.current = new Audio();
+                }
+
+                remoteAudioRef.current.srcObject = audioStream;
+                remoteAudioRef.current.play().catch(err => {
+                    console.warn("Audio play error:", err);
+                });
             }
-            remoteAudioRef.current.srcObject = remoteStream;
-            remoteAudioRef.current.play().catch(err => console.warn("Remote audio play error:", err));
+
+            if (track.kind === "video") {
+                const videoStream = new MediaStream([track]);
+                setRemoteVideoStream(videoStream);
+
+                // 🔥 QUAN TRỌNG: detect khi track bị stop
+                track.onended = () => {
+                    console.log("📴 Remote video track ended");
+                    setRemoteVideoStream(null);
+                };
+            }
         };
 
         pc.ondatachannel = (event) => {
@@ -199,7 +225,63 @@ export const useWebRTC = (partnerId: string | null, isInCall: boolean, callerId:
             console.error("❌ ICE error:", err);
         }
     };
+    // ===================== WEBCAM =====================
+    const videoSenderRef = useRef<RTCRtpSender | null>(null);
 
+    useEffect(() => {
+        if (!localVideoStream) return;
+
+        const pc = pcRef.current;
+        if (!pc) {
+            console.warn("⚠️ PeerConnection chưa sẵn sàng");
+            return;
+        }
+
+        const videoTrack = localVideoStream.getVideoTracks()[0];
+        if (!videoTrack) return;
+
+        const addOrReplaceVideo = async () => {
+            if (videoSenderRef.current) {
+                await videoSenderRef.current.replaceTrack(videoTrack);
+                console.log("🔁 Replace video track");
+            } else {
+                const sender = pc.addTrack(videoTrack, localVideoStream);
+                videoSenderRef.current = sender;
+                console.log("📹 Add video track");
+
+                // 🔥 renegotiate
+                const offer = await pc.createOffer();
+                await pc.setLocalDescription(offer);
+
+                if (partnerId) {
+                    await sendOffer({
+                        sdp: offer.sdp,
+                        toUserId: partnerId
+                    });
+                }
+
+                console.log("🔁 Renegotiation for video");
+            }
+        };
+
+        addOrReplaceVideo();
+
+    }, [localVideoStream, partnerId, isInCall]);
+    useEffect(() => {
+        const pc = pcRef.current;
+        if (!pc) return;
+
+        if (!localVideoStream && videoSenderRef.current) {
+            videoSenderRef.current.replaceTrack(null);
+
+            if (partnerId) {
+                connection?.invoke("SendCameraOff", partnerId);
+            }
+
+            videoSenderRef.current = null;
+            console.log("📴 Remove video track");
+        }
+    }, [localVideoStream]);
     // ===================== SIGNALR LISTENER =====================
     useEffect(() => {
         if (!connection) return;
@@ -207,11 +289,15 @@ export const useWebRTC = (partnerId: string | null, isInCall: boolean, callerId:
         connection.on("ReceiveOffer", handleReceiveOffer);
         connection.on("ReceiveAnswer", handleReceiveAnswer);
         connection.on("ReceiveIceCandidate", handleReceiveIce);
-
+        connection.on("CameraOff", () => {
+            console.log("📴 Remote camera OFF");
+            setRemoteVideoStream(null);
+        });
         return () => {
             connection.off("ReceiveOffer", handleReceiveOffer);
             connection.off("ReceiveAnswer", handleReceiveAnswer);
             connection.off("ReceiveIceCandidate", handleReceiveIce);
+            connection.off("CameraOff");
         };
     }, [connection]);
     //Auto CONNECT khi isInCall = true và có partnerId
@@ -289,7 +375,6 @@ export const useWebRTC = (partnerId: string | null, isInCall: boolean, callerId:
         }
 
         iceQueue.current = [];
-        setRemoteStream(null);
     };
 
     useEffect(() => {
@@ -321,7 +406,8 @@ export const useWebRTC = (partnerId: string | null, isInCall: boolean, callerId:
     return {
         isMuted,
         toggleMute,
-        remoteStream,
+        remoteAudioStream,
+        remoteVideoStream,
         cleanup
     };
 };

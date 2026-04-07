@@ -4,6 +4,7 @@ import { useSignalR } from "../contexts/SignalRContext";
 import { useMicHook } from "../hooks/useMicHook";
 import { useWebRTC } from "../hooks/useWebRTCHook";
 import { useAudioVisualizer } from "../hooks/useAudioVisualizer";
+import { useWebcamHook } from "../hooks/useWebcamHook";
 
 interface Props {
     onEndCall: () => void;
@@ -12,34 +13,36 @@ interface Props {
 
 const VideoCallLayout: React.FC<Props> = ({ onEndCall, onMinimize }) => {
 
+    // === Webcam Hook ===
+    const { isCamOn, toggleWebcam, localStream, videoRef, error } = useWebcamHook();
+    const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
+
     const { chatMessages, sendMessage: sendMessageFromContext, currentCallPartnerId, currentCallCallerId, isInCall } = useSignalR();
-    const { toggleMute, isMuted, remoteStream, cleanup } = useWebRTC(currentCallPartnerId, isInCall, currentCallCallerId);
+    const { toggleMute, isMuted, remoteVideoStream, remoteAudioStream, cleanup } = useWebRTC(currentCallPartnerId, isInCall, currentCallCallerId, localStream);
 
-    const barsRef = useRef<HTMLDivElement[]>([]);
 
-    const [autoScroll, setAutoScroll] = useState(true); // chế độ auto-scroll
-    const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
-    const [isCamOn, setIsCamOn] = useState(true);
+
+
     const [isSharing, setIsSharing] = useState(false);
-
+    const [isViewingScreen, setIsViewingScreen] = useState(false);
     //Voice
-    const { isMicOn, isSpeaking, toggleMic } = useMicHook(barsRef);
-
+    const barsRef = useRef<HTMLDivElement[]>([]);
+    const { toggleMic } = useMicHook(barsRef);
     const remoteBarsRef = useRef<HTMLDivElement[]>([]);
-    const { isSpeaking: otherSpeaking } = useAudioVisualizer(remoteStream, remoteBarsRef);
+    const { } = useAudioVisualizer(remoteAudioStream, remoteBarsRef);
     // Chat
-
+    const [autoScroll, setAutoScroll] = useState(true);
+    const messagesEndRef = useRef<HTMLDivElement | null>(null);
     const [inputText, setInputText] = useState("");
+
+
 
     const handleSendMessage = () => {
         if (!inputText.trim()) return;
-
         const text = inputText.trim();
-
         // Gửi tin nhắn thật lên server
         sendMessageFromContext(text);
-
         // Xóa ô nhập
         setInputText("");
     };
@@ -49,14 +52,15 @@ const VideoCallLayout: React.FC<Props> = ({ onEndCall, onMinimize }) => {
         toggleMute();
     };
     const handleEndCall = async () => {
-        cleanup();     
+        if (localStream) {
+            localStream.getTracks().forEach(track => track.stop());
+        }
+        cleanup();
         onEndCall();
     };
     const handleKeyPress = (e: KeyboardEvent<HTMLInputElement>) => {
         if (e.key === "Enter") handleSendMessage();
     };
-
-
 
     useEffect(() => {
         if (autoScroll) {
@@ -64,27 +68,74 @@ const VideoCallLayout: React.FC<Props> = ({ onEndCall, onMinimize }) => {
         }
     }, [chatMessages, autoScroll]);
 
+    useEffect(() => {
+        const video = remoteVideoRef.current;
+        if (!video) return;
+
+        if (remoteVideoStream) {
+            video.srcObject = remoteVideoStream;
+        } else {
+            video.srcObject = null;
+            video.load(); // 🔥 BẮT BUỘC để clear frame
+        }
+    }, [remoteVideoStream]);
     return (
         <div className="call-container">
             {/* MAIN */}
             <div className="main">
-                <div className="main-label">Share Screen or Cam Other</div>
+                <div className="main-label">Màn hình người kia</div>
+
+                <div className="remote-view-container">
+                    {/* Khu vực hiển thị video / screenshare của người kia */}
+                    <div className="remote-video-wrapper">
+                        {isViewingScreen ? (
+                            <div className="remote-screen">
+                                {/* Sau này bạn sẽ truyền remoteScreenStream vào đây */}
+                                <div className="placeholder-screen">
+                                    <p> Đang xem màn hình chia sẻ của người kia</p>
+                                    <small>Chưa nhận được stream</small>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="remote-camera">
+                                <video
+                                    ref={remoteVideoRef}
+                                    autoPlay
+                                    playsInline
+                                    className={`remote-video ${!remoteVideoStream ? "hidden" : ""}`}
+                                />
+
+                                {!remoteVideoStream && (
+                                    <div className="no-remote-video">
+                                        <p>📷 Camera của người kia đang tắt</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
 
                 <div className="controls">
-                    <button onClick={() => setIsCamOn(!isCamOn)}>
+                    <button onClick={toggleWebcam}>
                         {isCamOn ? "Tắt Camera" : "Bật Camera"}
                     </button>
 
                     <button onClick={handleMic}>
-                        {isMuted ? "Unmute" : "Mute"}
+                        {isMuted ? "Bật Micro" : "Tắt Micro"}
                     </button>
 
                     <button onClick={() => setIsSharing(!isSharing)}>
                         {isSharing ? "Dừng Chia Sẻ" : "Chia Sẻ Màn Hình"}
                     </button>
 
-                    <button >
-                        Xem Camera - Xem Màn Hình
+                    <button
+                        onClick={() => setIsViewingScreen(!isViewingScreen)}
+                        className={`view-toggle-btn ${isViewingScreen ? 'viewing-screen' : 'viewing-camera'}`}
+                    >
+                        {isViewingScreen
+                            ? "Xem Camera"
+                            : "Xem Màn Hình Chia Sẻ"
+                        }
                     </button>
 
                     <button onClick={onMinimize}>
@@ -176,8 +227,28 @@ const VideoCallLayout: React.FC<Props> = ({ onEndCall, onMinimize }) => {
                     </div>
                 </div>
 
+                {/* === CAMERA SECTION === */}
                 <div className="cam-user">
-                    <div className="title">Màn hình</div>
+                    <div className="title">Camera của bạn</div>
+
+                    <div className="cam-container">
+                        {isCamOn && localStream ? (
+                            <video
+                                ref={videoRef}
+                                autoPlay
+                                playsInline
+                                muted
+                                className="local-video"
+                            />
+                        ) : (
+                            <div className="cam-off">
+                                <div className="cam-off-icon">📷</div>
+                                <p>Webcam đang tắt</p>
+                                <small>Nhấn "Bật Camera" để bật</small>
+                            </div>
+                        )}
+                        {error && <div className="cam-error">{error}</div>}
+                    </div>
                 </div>
             </div>
         </div>

@@ -367,7 +367,6 @@ export const SignalRProvider: React.FC<{
 
         sendOffer: async ({ sdp, toUserId }) => {
             await connection.invoke("SendOffer", toUserId, sdp);
-            console.log("🚀 invoke SendOffer", toUserId, sdp);
         },
 
         sendAnswer: async ({ sdp, toUserId }) => {
